@@ -27,14 +27,14 @@ const DECISION = {PASS:["통과", "pass"], CONFIRM:["보류", "ask"], BLOCK:["�
 const MCP_TOOLS = ["list_mail", "read_mail", "search_files", "read_doc", "list_events", "move_file", "create_event", "send_email", "share_link", "delete_file"];   // mcp/README.md
 // 걸린 정책 줄 → 짧은 사유. moonjigi.js에 whyParts()가 있으면 그 말을 쓰고, 없으면 같은 표를 여기서 읽는다
 const WHY = [
-  [/^risky & match<=0\.2$/, "시킨 일 밖"],
-  [/^risky & injected>=0\.8$/, "읽은 글 속 지시"],
-  [/^gate unreachable/, "문지기 무응답"],
-  [/^gate error/, "판정 서버 연결 실패"],
-  [/cut\/timeout/, "더 따져 보기 미완"],
-  [/^still unsure|^risky & unsure/, "확신 부족"],
-  [/^known read-only tool$|^read & injected<0\.5$/, "읽기만 하는 일"],
-  [/^match>=0\.8/, "시킨 일"],
+  [/^risky & match<=0\.2$/, "요청 범위 이탈"],
+  [/^risky & injected>=0\.8$/, "프롬프트 인젝션"],
+  [/^gate unreachable/, "게이트 무응답"],
+  [/^gate error/, "검증 서버 연결 실패"],
+  [/cut\/timeout/, "추론 타임아웃 / 미완료"],
+  [/^still unsure|^risky & unsure/, "신뢰도 낮음"],
+  [/^known read-only tool$|^read & injected<0\.5$/, "읽기 전용"],
+  [/^match>=0\.8/, "정상 요청 범위"],
 ];
 
 const C = {
@@ -80,7 +80,7 @@ function whyLabel(v){
   if (/^company rule/.test(r)){
     const hit = (v.rules || []).find(x => x && x.hit);
     const id = hit ? hit.id : (/^company rule: ([\w-]+)/.exec(r) || [])[1];
-    return "회사 규칙" + (id ? " · " + (RULE_NAME[id] || id) : "");
+    return "사내 정책" + (id ? " · " + (RULE_NAME[id] || id) : "");
   }
   if (r === "no rule fired") return "";
   if (typeof whyParts === "function"){ const w = whyParts(v)[0]; if (w && w !== r) return w; }
@@ -118,7 +118,7 @@ function renderStatus(state){
   s.dataset.state = state;
   s.className = "health " + (state === "ok" ? "ok" : "bad");
   const word = {ok:"연결", bad:"무응답", down:"연결 실패"}[state];           // 시연 화면의 위 띠와 같은 말
-  text("status-text", state === "down" ? "서버 연결 실패" : "판정 서버 " + word);
+  text("status-text", state === "down" ? "서버 연결 실패" : "검증 서버 " + word);
   text("status-policy", h.policy ? "정책 " + h.policy : "");
   text("st-judge", word);
   el("st-judge").className = state === "ok" ? "t-pass" : "t-block";
@@ -133,19 +133,19 @@ function renderRules(){
   draw("rules-list", rules.map(([id, r]) => `<article class="cn-rule" data-rule="${esc(id)}">
     <p class="cn-rule-text">${esc(r.text || id)}</p>
     <dl class="cn-kv">
-      <dt>이름</dt><dd class="mono">${esc(id)}</dd>
+      <dt>규칙 ID</dt><dd class="mono">${esc(id)}</dd>
       <dt>대상</dt><dd>${esc(KIND_KO[r.effect] || r.effect || "")}</dd>
-      <dt>문턱</dt><dd>${esc(r.threshold ?? "")}</dd>
-      <dt>조치</dt><dd>사람 확인</dd>
-      <dt>적용</dt><dd>요청마다</dd>
+      <dt>임계값 (Threshold)</dt><dd>${esc(r.threshold ?? "")}</dd>
+      <dt>조치</dt><dd>승인 필요</dd>
+      <dt>적용 방식</dt><dd>요청별 지정 (Per-request)</dd>
       <dt>MCP</dt><dd class="mono">MOONJIGI_RULES=${esc(id)}</dd>
       <dt>HTTP</dt><dd class="mono">"rules": ["${esc(id)}"]</dd>
-      ${ver ? `<dt>판</dt><dd class="mono">${esc(ver)}</dd>` : ""}
+      ${ver ? `<dt>버전</dt><dd class="mono">${esc(ver)}</dd>` : ""}
     </dl></article>`).join(""));
 }
 function renderEnv(){                                 // 값이 없는 줄은 그리지 않는다
   const h = C.health || {};
-  const rows = [["문지기 주소", "MOONJIGI_GATE", location.origin], ["규칙", "MOONJIGI_RULES", Object.keys(obj(h.rules)).join(",")], ["정책 판", "MOONJIGI_POLICY", h.policy || ""]];
+  const rows = [["게이트웨이 URL", "MOONJIGI_GATE", location.origin], ["규칙", "MOONJIGI_RULES", Object.keys(obj(h.rules)).join(",")], ["정책 버전", "MOONJIGI_POLICY", h.policy || ""]];
   draw("connect-env", rows.filter(r => r[2]).map(([k, name, val]) => `<dt>${esc(k)}</dt><dd class="mono">${esc(name)}=${esc(val)}</dd>`).join(""));
 }
 function renderTools(){                               // 정적 — MCP 서버가 내놓는 도구 열(mcp/README.md)
@@ -180,7 +180,7 @@ function logModel(entries){
 function decisionOf(row){
   const d = row.v.decision;
   if (d === "REASON") return (row.t != null && now() - row.t < THINK_S * 1000)
-    ? {code:"REASON", ko:"더 따져 보는 중", tone:"muted", busy:true} : {code:"REASON", ko:"미결", tone:"muted"};
+    ? {code:"REASON", ko:"추론 중", tone:"muted", busy:true} : {code:"REASON", ko:"미완료", tone:"muted"};
   const x = DECISION[d];
   return x ? {code:d, ko:x[0], tone:x[1]} : {code:String(d || ""), ko:String(d || ""), tone:"muted"};
 }
@@ -239,7 +239,7 @@ function answered(run, S, evs){
     const wait = evs.find(e => e.type === "confirm_wait" && e.call_id === id), res = evs.find(e => e.type === "confirm_result" && e.call_id === id);
     if (!wait || !wait.timeout_s || !res) continue;
     out.push({key:run + "|" + id, t:res.t != null ? res.t * 1000 : null, name:c.name, args:c.args,
-      word:cf.approve ? "허락" : (cf.by === "timeout" ? "만료" : "거절"), tone:cf.approve ? "pass" : "muted"});
+      word:cf.approve ? "승인" : (cf.by === "timeout" ? "만료" : "거절"), tone:cf.approve ? "pass" : "muted"});
   }
   return out;
 }
@@ -293,10 +293,10 @@ async function tickRuns(){
 
 function approvalHTML(it){
   const a = it.args, t = toolOf(it.name), tgt = target(it.name, a), rows = [["사유", whyLabel(it.v)]];
-  if (it.task) rows.push(["시킨 일", cut(it.task, 200)]);
+  if (it.task) rows.push(["사용자 요청", cut(it.task, 200)]);
   if (it.name === "send_email"){
     if (a.subject) rows.push(["제목", a.subject]);
-    if (Array.isArray(a.attach) && a.attach.length) rows.push(["붙임", a.attach.map(baseName).join(", ")]);
+    if (Array.isArray(a.attach) && a.attach.length) rows.push(["첨부파일", a.attach.map(baseName).join(", ")]);
     if (a.body) rows.push(["본문", a.body, "cn-pre"]);
   } else {
     const rest = Object.entries(a).map(([k, x]) => `${k}=${typeof x === "string" ? x : JSON.stringify(x)}`).join("  ");
@@ -305,7 +305,7 @@ function approvalHTML(it){
   return `<div class="cn-ap-head">
     <p class="cn-ap-what"><b>${esc(t.ko)}</b>${tgt ? `<span title="${esc(tgt)}">· ${esc(tgt)}</span>` : ""}</p>
     <span class="cn-ap-left">남은 시간 <span data-left></span></span>
-    <span class="cn-ap-act"><button type="button" class="b" data-deny>거절</button><button type="button" class="b main" data-approve>허락</button></span>
+    <span class="cn-ap-act"><button type="button" class="b" data-deny>거절</button><button type="button" class="b main" data-approve>승인</button></span>
   </div>
   <dl class="cn-kv">${rows.filter(r => r[1]).map(([k, x, cls]) => `<dt>${esc(k)}</dt><dd${cls ? ` class="${cls}"` : ""}>${esc(x)}</dd>`).join("")}</dl>`;
 }

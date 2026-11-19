@@ -31,7 +31,7 @@ const STATES = [
     await p.keyboard.press('Space'); await p.waitForSelector('[data-answer="no"]', { timeout: 90000 }); await sleep(600);
   }, after: async p => { await p.keyboard.press('n'); await p.waitForFunction(() => document.querySelectorAll('.after').length >= 2, null, { timeout: 30000 }).catch(() => {}); } },
   { file: 'demo-5.html', title: '⑤ 다른 에이전트 — 보류', url: '/index.html#5', go: async p => { await p.keyboard.press('Space'); await sleep(800); await p.keyboard.press('e'); await p.waitForSelector('.after', { timeout: 30000 }); } },
-  { file: 'try.html', title: '직접 넣어 보기 — 속음 예시를 물은 뒤', url: '/try.html', go: async p => { await p.click('[data-preset="hidden"]'); await p.click('#ask'); await p.waitForFunction(() => { const r = document.querySelector('.ruling'); return r && !/확인 중/.test(r.innerText); }, null, { timeout: 30000 }); } },
+  { file: 'try.html', title: '직접 넣어 보기 — 속음 예시를 물은 뒤', url: '/try.html', go: async p => { await p.click('[data-preset="hidden"]'); await p.click('#ask'); await p.waitForFunction(() => { const r = document.querySelector('.ruling'); return r && !/검증 중/.test(r.innerText); }, null, { timeout: 30000 }); } },
   { file: 'console.html', title: '콘솔 — 승인 대기 · 검문 기록 · 규칙 · 연결', url: '/console.html', optional: true, go: async p => { await sleep(4000); } },
 ];
 
