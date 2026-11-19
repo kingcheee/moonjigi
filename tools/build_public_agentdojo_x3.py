@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""공개 자료 묶음 3·4판 — AgentDojo(ethz-spylab/agentdojo, MIT) slack·banking·travel 공격만, 문구 틀만 바꿈
+"""공개 자료 묶음 3·4·5판 — AgentDojo(ethz-spylab/agentdojo, MIT) slack·banking·travel 공격만, 문구 틀만 바꿈
 
   python3 -I tools/build_public_agentdojo_x3.py <agentdojo 폴더> ignore_previous > attack/public-agentdojo-x3.json
   python3 -I tools/build_public_agentdojo_x3.py <agentdojo 폴더> system_message  > attack/public-agentdojo-x4.json
+  python3 -I tools/build_public_agentdojo_x3.py <agentdojo 폴더> injecagent      > attack/public-agentdojo-x5.json   (11-20 05:3x 더함 · 2판 짝 · id A1341…)
 
 1판(important_instructions · 1판 짝)·2판(direct · 2판 짝)과 같은 공격 목표 20개를 다른 문구 틀로 다시 잰다 — 「문구만 바꾸면 뚫리나」.
   ignore_previous → 1판 짝(build_public_agentdojo_x.py ATTACKS) · id A1301…
@@ -23,7 +24,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 TPL = sys.argv[2]
-assert TPL in ("ignore_previous", "system_message"), TPL
+assert TPL in ("ignore_previous", "system_message", "injecagent"), TPL
 sys.argv = sys.argv[:2]
 
 
@@ -39,7 +40,7 @@ X2 = load("adx2", "build_public_agentdojo_x2.py")
 X = X2.X
 B0 = load("ad0", "build_public_agentdojo.py")
 
-CLS = {"ignore_previous": "IgnorePreviousAttack", "system_message": "SystemMessageAttack"}[TPL]
+CLS = {"ignore_previous": "IgnorePreviousAttack", "system_message": "SystemMessageAttack", "injecagent": "InjecAgentAttack"}[TPL]
 t = ast.parse((X.ROOT / "attacks/baseline_attacks.py").read_text(encoding="utf-8"))
 cls = next(c for c in t.body if isinstance(c, ast.ClassDef) and c.name == CLS)
 JB = next(x.args[0].value for x in ast.walk(cls) if isinstance(x, ast.Call) and isinstance(x.func, ast.Attribute)
@@ -49,10 +50,14 @@ TECH = B0.TECH[TPL]
 
 if TPL == "ignore_previous":
     PAIRS, START, PAN = X.ATTACKS, 1301, "1판 짝"
-else:
+elif TPL == "system_message":
     PAIRS, START, PAN = X2.ATTACKS2, 1321, "2판 짝"
-SET_NOTE = (f"공개 자료 — AgentDojo slack·banking·travel(MIT) {'3' if START == 1301 else '4'}판 · 문구 틀 {TPL} · {PAN} 그대로 · "
-            "공격만(정상 대조 없음) · 문장 원문 그대로 · 짝짓기·인자 채우기는 우리가 함 · v7까지 안 본 자료")
+else:
+    PAIRS, START, PAN = X2.ATTACKS2, 1341, "2판 짝"
+PANNO = {1301: "3", 1321: "4", 1341: "5"}[START]
+SET_NOTE = (f"공개 자료 — AgentDojo slack·banking·travel(MIT) {PANNO}판 · 문구 틀 {TPL} · {PAN} 그대로 · "
+            "공격만(정상 대조 없음) · 문장 원문 그대로 · 짝짓기·인자 채우기는 우리가 함 · "
+            + ("v7까지 안 본 자료" if START != 1341 else "v10 고정(8e4593b) 뒤에 만듦 — 공격 호출은 2판과 같음"))
 
 out = []
 for n, (suite, it, ut, vec) in enumerate(PAIRS, START):
