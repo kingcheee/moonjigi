@@ -29,6 +29,8 @@ def kind_of(sc: list[dict]) -> str:
     if o == {"ours"}:
         if "짝 대조" in note:
             return "우리 짝 대조(어려운 정상)"
+        if "적응형 묶음 4" in note:
+            return "우리 적응형 4(v13 피하기)"
         if "적응형 묶음 3" in note:
             return "우리 적응형 3(v11 피하기)"
         if "적응형 묶음 2" in note:
