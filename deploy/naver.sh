@@ -19,6 +19,7 @@
 #          a2 의 최신 작업 트리로 올리려면  CORE=../moonjigi deploy/naver.sh
 #   EXTRA  CORE 에 없는 web/·runs-live/ 파일을 더 얹을 폴더 (기본: 이 워크트리 — index.html·try.html·pi-*.jsonl). 겹치면 CORE 가 이긴다
 #   PORT   공개 포트 (기본 8899)
+#   POLICY 게이트 서버 기본 정책 판 (기본 v3)
 #
 # 서버·방화벽 변경은 ~/workspace/01-infra/server-work/docs/setup-ledger.md 에 적는다. 서버 반납은 server-work 의 bin/down.sh.
 set -euo pipefail
@@ -31,6 +32,7 @@ IP="${IP:-$(cat "$STATE/ip" 2>/dev/null || true)}"
 CORE="$(cd "${CORE:-$WT}" && pwd)"
 EXTRA="$(cd "${EXTRA:-$WT}" && pwd)"
 PORT="${PORT:-8899}"
+POLICY="${POLICY:-v3}"   # 게이트 서버 기본 정책 판(요청마다 "policy"로 바꿀 수 있다)
 REMOTE=/root/moonjigi-demo
 UNIT=moonjigi-gate
 ACG=397049
@@ -74,7 +76,7 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=$REMOTE
-ExecStart=/usr/bin/python3 $REMOTE/server.py --upstream http://127.0.0.1:30001 --host 0.0.0.0 --port $PORT
+ExecStart=/usr/bin/python3 $REMOTE/server.py --upstream http://127.0.0.1:30001 --host 0.0.0.0 --port $PORT --policy $POLICY
 Restart=always
 RestartSec=2
 StandardOutput=append:$REMOTE/logs/server.out
