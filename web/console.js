@@ -27,20 +27,21 @@ const DECISION = {PASS:["통과", "pass"], CONFIRM:["보류", "ask"], BLOCK:["�
 const MCP_TOOLS = ["list_mail", "read_mail", "search_files", "read_doc", "list_events", "move_file", "create_event", "send_email", "share_link", "delete_file"];   // mcp/README.md
 // 걸린 정책 줄 → 짧은 사유. moonjigi.js에 whyParts()가 있으면 그 말을 쓰고, 없으면 같은 표를 여기서 읽는다
 const WHY = [
-  [/^risky & match<=0\.2$/, "시킨 일 밖"],
-  [/^risky & injected>=0\.8$/, "읽은 글 속 지시"],
-  [/^gate unreachable/, "문지기 무응답"],
-  [/^gate error/, "판정 서버 연결 실패"],
-  [/cut\/timeout/, "더 따져 보기 미완"],
+  [/^risky & match<=0\.2$/, "요청하지 않은 작업"],
+  [/^risky & injected>=0\.8$/, "프롬프트 인젝션 감지"],
+  [/^gate unreachable/, "검증 서버 무응답"],
+  [/^gate error/, "검증 서버 연결 실패"],
+  [/cut\/timeout/, "추론 시간 초과"],
   [/^still unsure|^risky & unsure/, "확신 부족"],
-  [/^known read-only tool$|^read & injected<0\.5$/, "읽기만 하는 일"],
-  [/^match>=0\.8/, "시킨 일"],
+  [/^known read-only tool$|^read & injected<0\.5$/, "읽기 전용"],
+  [/^match>=0\.8/, "정상 요청"],
 ];
 
 const C = {
   skew:0,                    // 서버 시계 − 내 시계(ms) — 만료까지 남은 시간에 쓴다
   health:null,
-  rows:new Map(),            // 검문 기록: key → {tr, html}
+  rows:new Map(),            // 감사 로그: key → {tr, html, row}
+  selRow:null,               // 판별 상세 드로어에서 보고 있는 로그 key
   logFirst:true, filter:"all",
   waiting:new Map(),         // 승인 대기: run|call → {node, it}
   dead:new Set(),            // 파일만 남고 서버에 살아 있지 않은 판
@@ -80,7 +81,7 @@ function whyLabel(v){
   if (/^company rule/.test(r)){
     const hit = (v.rules || []).find(x => x && x.hit);
     const id = hit ? hit.id : (/^company rule: ([\w-]+)/.exec(r) || [])[1];
-    return "회사 규칙" + (id ? " · " + (RULE_NAME[id] || id) : "");
+    return "사내 정책" + (id ? " · " + (RULE_NAME[id] || id) : "");
   }
   if (r === "no rule fired") return "";
   if (typeof whyParts === "function"){ const w = whyParts(v)[0]; if (w && w !== r) return w; }
@@ -117,43 +118,44 @@ function renderStatus(state){
   const h = C.health || {}, s = el("status");
   s.dataset.state = state;
   s.className = "health " + (state === "ok" ? "ok" : "bad");
-  const word = {ok:"연결", bad:"무응답", down:"연결 실패"}[state];           // 시연 화면의 위 띠와 같은 말
-  text("status-text", state === "down" ? "서버 연결 실패" : "판정 서버 " + word);
+  const word = {ok:"연결됨", bad:"미연결", down:"연결 끊김"}[state];
+  const full = {ok:"실시간 검증 연결됨", bad:"검증 서버 미연결", down:"서버 연결 끊김"}[state];
+  text("status-text", full);
   text("status-policy", h.policy ? "정책 " + h.policy : "");
   text("st-judge", word);
-  el("st-judge").className = state === "ok" ? "t-pass" : "t-block";
+  el("st-judge").className = state === "ok" ? "t-pass" : "t-muted";
   text("st-policy", h.policy || "");
   short("st-policy-v", h.policy_version);
   short("st-rules-v", h.rules_version);
 }
 function renderRules(){
   const rules = Object.entries(obj((C.health || {}).rules)), ver = (C.health || {}).rules_version;
-  text("rules-n", rules.length || ""); text("nav-rules-n", rules.length || "");
+  text("rules-n", rules.length ? rules.length + "개" : ""); text("nav-rules-n", "");
   el("rules-none").hidden = rules.length > 0;
   draw("rules-list", rules.map(([id, r]) => `<article class="cn-rule" data-rule="${esc(id)}">
     <p class="cn-rule-text">${esc(r.text || id)}</p>
     <dl class="cn-kv">
-      <dt>이름</dt><dd class="mono">${esc(id)}</dd>
-      <dt>대상</dt><dd>${esc(KIND_KO[r.effect] || r.effect || "")}</dd>
-      <dt>문턱</dt><dd>${esc(r.threshold ?? "")}</dd>
-      <dt>조치</dt><dd>사람 확인</dd>
-      <dt>적용</dt><dd>요청마다</dd>
-      <dt>MCP</dt><dd class="mono">MOONJIGI_RULES=${esc(id)}</dd>
-      <dt>HTTP</dt><dd class="mono">"rules": ["${esc(id)}"]</dd>
-      ${ver ? `<dt>판</dt><dd class="mono">${esc(ver)}</dd>` : ""}
+      <dt>규칙 ID</dt><dd><code class="cn-tok">${esc(id)}</code></dd>
+      <dt>적용 대상</dt><dd>${esc(KIND_KO[r.effect] || r.effect || "")}</dd>
+      <dt>판단 기준</dt><dd>${r.threshold != null ? esc(r.threshold) + " 이상" : ""}</dd>
+      <dt>조치</dt><dd>사람 승인 후 실행</dd>
+      <dt>적용 방식</dt><dd>요청할 때 선택 적용</dd>
+      <dt>MCP</dt><dd><code class="cn-tok"><span class="cn-tok-key">MOONJIGI_RULES</span>=${esc(id)}</code></dd>
+      <dt>HTTP</dt><dd><code class="cn-tok">"rules": ["${esc(id)}"]</code></dd>
+      ${ver ? `<dt>버전</dt><dd><code class="cn-tok">${esc(ver)}</code></dd>` : ""}
     </dl></article>`).join(""));
 }
 function renderEnv(){                                 // 값이 없는 줄은 그리지 않는다
   const h = C.health || {};
-  const rows = [["문지기 주소", "MOONJIGI_GATE", location.origin], ["규칙", "MOONJIGI_RULES", Object.keys(obj(h.rules)).join(",")], ["정책 판", "MOONJIGI_POLICY", h.policy || ""]];
-  draw("connect-env", rows.filter(r => r[2]).map(([k, name, val]) => `<dt>${esc(k)}</dt><dd class="mono">${esc(name)}=${esc(val)}</dd>`).join(""));
+  const rows = [["게이트웨이 URL", "MOONJIGI_GATE", location.origin], ["사내 정책", "MOONJIGI_RULES", Object.keys(obj(h.rules)).join(",")], ["정책 버전", "MOONJIGI_POLICY", h.policy || ""]];
+  draw("connect-env", rows.filter(r => r[2]).map(([k, name, val]) => `<dt>${esc(k)}</dt><dd><code class="cn-tok"><span class="cn-tok-key">${esc(name)}</span>=${esc(val)}</code></dd>`).join(""));
 }
 function renderTools(){                               // 정적 — MCP 서버가 내놓는 도구 열(mcp/README.md)
   const by = {};
   for (const n of MCP_TOOLS){ const k = toolOf(n).kind || "read"; (by[k] = by[k] || []).push(n); }
-  text("tools-n", MCP_TOOLS.length);
+  text("tools-n", MCP_TOOLS.length + "개");
   draw("connect-tools", ["read", "modify", "send", "delete"].filter(k => by[k]).map(k =>
-    `<dt>${esc(KIND_KO[k])}</dt><dd class="mono">${by[k].map(esc).join(" · ")}</dd>`).join(""));
+    `<dt>${esc(KIND_KO[k])}</dt><dd class="cn-toks">${by[k].map(n => `<code class="cn-tok">${esc(n)}</code>`).join("")}</dd>`).join(""));
 }
 
 // ───────────── 검문 기록 (GET /log) ─────────────
@@ -171,7 +173,7 @@ function logModel(entries){
       const n = (dup.get(raw) || 0) + 1; dup.set(raw, n);
       key = "k:" + hash(raw) + ":" + n;
     }
-    const row = {key, t:parseT(e.t), name:String(tc.name || ""), args:tc.args, v};
+    const row = {key, t:parseT(e.t), name:String(tc.name || ""), args:obj(tc.args), req:String((e && e.call && e.call.user_request) || ""), v};
     if (rid) byRid.set(rid, row);
     rows.push(row);
   }
@@ -180,7 +182,7 @@ function logModel(entries){
 function decisionOf(row){
   const d = row.v.decision;
   if (d === "REASON") return (row.t != null && now() - row.t < THINK_S * 1000)
-    ? {code:"REASON", ko:"더 따져 보는 중", tone:"muted", busy:true} : {code:"REASON", ko:"미결", tone:"muted"};
+    ? {code:"REASON", ko:"추론 중", tone:"muted", busy:true} : {code:"REASON", ko:"미완료", tone:"muted"};
   const x = DECISION[d];
   return x ? {code:d, ko:x[0], tone:x[1]} : {code:String(d || ""), ko:String(d || ""), tone:"muted"};
 }
@@ -195,21 +197,49 @@ function rowHTML(row, d){
 }
 function renderLog(entries){
   const rows = logModel(entries), body = el("log-rows"), keep = new Set(rows.map(r => r.key));
-  for (const [k, x] of C.rows) if (!keep.has(k)){ x.tr.remove(); C.rows.delete(k); }
-  for (const row of rows){                            // 오래된 것부터 돈다 → 새 행은 늘 맨 위에 붙는다
+  for (const [k, x] of C.rows) if (!keep.has(k)){ x.tr.remove(); C.rows.delete(k); if (C.selRow === k) closeDrawer(); }
+  for (const row of rows){
     const d = decisionOf(row), html = rowHTML(row, d);
     let x = C.rows.get(row.key);
     if (!x){
       const tr = document.createElement("tr");
       tr.setAttribute("data-log-row", "");
-      if (!C.logFirst) tr.className = "cn-new";       // 처음 읽은 줄들은 새 줄이 아니다
+      tr.dataset.rowKey = row.key;
+      if (!C.logFirst) tr.className = "cn-new";
       body.prepend(tr);
-      x = {tr, html:""}; C.rows.set(row.key, x);
+      x = {tr, html:"", row}; C.rows.set(row.key, x);
     }
+    x.row = row;
     if (x.html !== html){ x.tr.innerHTML = html; x.html = html; x.tr.dataset.decision = d.code; }
+    x.tr.classList.toggle("cn-sel", C.selRow === row.key);
   }
   C.logFirst = false;
   applyFilter();
+  if (C.selRow && C.rows.has(C.selRow)) renderDrawer();
+}
+function openDrawer(key){
+  if (!C.rows.has(key)) return;
+  C.selRow = key;
+  for (const [k, x] of C.rows) x.tr.classList.toggle("cn-sel", k === key);
+  renderDrawer();
+}
+function closeDrawer(){
+  C.selRow = null;
+  for (const x of C.rows.values()) x.tr.classList.remove("cn-sel");
+  el("cn-drawer").hidden = true;
+  el("cn-drawer-back").hidden = true;
+}
+function renderDrawer(){
+  const x = C.rows.get(C.selRow);
+  const drawer = el("cn-drawer"), back = el("cn-drawer-back");
+  if (!x){ drawer.hidden = true; back.hidden = true; return; }
+  const row = x.row;
+  const synthetic = {id:row.key, n:1, name:row.name, args:row.args, v:row.v, final:row.v.decision !== "REASON", result:null, executed:null, confirm:null};
+  const reqBox = row.req ? `<p class="notice" style="margin-bottom:12px"><b>사용자 요청</b> · ${esc(row.req)}</p>` : "";
+  drawer.innerHTML = `<div class="ih"><h2>판별 상세</h2><button type="button" class="b quiet sm" id="cn-drawer-close">닫기 <kbd>Esc</kbd></button></div>`
+    + reqBox + insideHTML(synthetic, {start:{}});
+  drawer.hidden = false;
+  back.hidden = false;
 }
 function applyFilter(){
   let n = 0;
@@ -239,7 +269,7 @@ function answered(run, S, evs){
     const wait = evs.find(e => e.type === "confirm_wait" && e.call_id === id), res = evs.find(e => e.type === "confirm_result" && e.call_id === id);
     if (!wait || !wait.timeout_s || !res) continue;
     out.push({key:run + "|" + id, t:res.t != null ? res.t * 1000 : null, name:c.name, args:c.args,
-      word:cf.approve ? "허락" : (cf.by === "timeout" ? "만료" : "거절"), tone:cf.approve ? "pass" : "muted"});
+      word:cf.approve ? "승인됨" : (cf.by === "timeout" ? "만료" : "거절됨"), tone:cf.approve ? "pass" : "muted"});
   }
   return out;
 }
@@ -293,11 +323,11 @@ async function tickRuns(){
 
 function approvalHTML(it){
   const a = it.args, t = toolOf(it.name), tgt = target(it.name, a), rows = [["사유", whyLabel(it.v)]];
-  if (it.task) rows.push(["시킨 일", cut(it.task, 200)]);
+  if (it.task) rows.push(["사용자 요청", cut(it.task, 200)]);
   if (it.name === "send_email"){
     if (a.subject) rows.push(["제목", a.subject]);
-    if (Array.isArray(a.attach) && a.attach.length) rows.push(["붙임", a.attach.map(baseName).join(", ")]);
-    if (a.body) rows.push(["본문", a.body, "cn-pre"]);
+    if (Array.isArray(a.attach) && a.attach.length) rows.push(["첨부파일", a.attach.map(baseName).join(", ")]);
+    if (a.body) rows.push(["본문", a.body, "cn-pre", true]);
   } else {
     const rest = Object.entries(a).map(([k, x]) => `${k}=${typeof x === "string" ? x : JSON.stringify(x)}`).join("  ");
     if (rest) rows.push(["인자", cut(rest, 400), "mono"]);
@@ -305,9 +335,10 @@ function approvalHTML(it){
   return `<div class="cn-ap-head">
     <p class="cn-ap-what"><b>${esc(t.ko)}</b>${tgt ? `<span title="${esc(tgt)}">· ${esc(tgt)}</span>` : ""}</p>
     <span class="cn-ap-left">남은 시간 <span data-left></span></span>
-    <span class="cn-ap-act"><button type="button" class="b" data-deny>거절</button><button type="button" class="b main" data-approve>허락</button></span>
+    <span class="cn-ap-act"><button type="button" class="b hitl-deny" data-deny>${ICO.x} 거절</button><button type="button" class="b hitl-approve" data-approve>${ICO.check} 승인</button></span>
   </div>
-  <dl class="cn-kv">${rows.filter(r => r[1]).map(([k, x, cls]) => `<dt>${esc(k)}</dt><dd${cls ? ` class="${cls}"` : ""}>${esc(x)}</dd>`).join("")}</dl>`;
+  <div class="cdbar" aria-hidden="true"><i data-left-bar style="width:100%"></i></div>
+  <dl class="cn-kv">${rows.filter(r => r[1]).map(([k, x, cls, isPii]) => `<dt>${esc(k)}</dt><dd${cls ? ` class="${cls}"` : ""}>${isPii ? highlightPiiHTML(x) : esc(x)}</dd>`).join("")}</dl>`;
 }
 // 행은 run|call 이름으로 붙들어 둔다 — 다시 읽을 때마다 갈아 끼우면 누르던 단추가 사라진다
 function renderApprovals(waiting){
@@ -324,20 +355,23 @@ function renderApprovals(waiting){
     C.waiting.set(k, {node, it});
   }
   const n = C.waiting.size;
-  text("ap-n", n); el("ap-n").dataset.n = n; text("nav-ap-n", n || "");
+  text("ap-n", n + "건"); el("ap-n").dataset.n = n; text("nav-ap-n", n ? n + "건" : "");
   el("ap-none").hidden = n > 0;
   el("approvals").dataset.pending = n;                 // 넓은 화면에서는 기다리는 건이 있으면 처리 기록을 접는다(console.css)
   document.title = (n ? `(${n}) ` : "") + "문지기 콘솔";
   tickLeft();
 }
-function tickLeft(){                                  // 사람 확인이 만료될 때까지 남은 시간
+function tickLeft(){                                  // 승인 대기가 만료될 때까지 남은 시간 및 진행 바
   for (const {node, it} of C.waiting.values()){
     const out = node.querySelector("[data-left]");
     if (!out) continue;
     if (it.t0 == null || !it.limit){ out.textContent = ""; continue; }
-    const s = Math.max(0, Math.ceil(it.limit - (now() / 1000 - it.t0)));
+    const rem = Math.max(0, it.limit - (now() / 1000 - it.t0));
+    const s = Math.ceil(rem);
     const str = Math.floor(s / 60) + ":" + p2(s % 60);
     if (out.textContent !== str) out.textContent = str;
+    const bar = node.querySelector("[data-left-bar]");
+    if (bar) bar.style.width = Math.max(0, Math.min(100, (rem / it.limit) * 100)).toFixed(1) + "%";
   }
 }
 async function answer(node, approve){
@@ -358,7 +392,7 @@ function renderDone(list){
     <span class="cn-r t-${x.tone}">${esc(x.word)}</span></li>`; }).join(""));
 }
 function renderConns(list, total){
-  text("conn-n", total || "");
+  text("conn-n", total ? total + "건" : "");
   el("conn-none").hidden = list.length > 0;
   draw("conn-list", list.map(x => `<li data-conn="${esc(x.id)}" data-open="${x.open}">
     <span class="cn-who">${esc(x.who)}</span><span class="cn-st">${x.open ? "연결 중" : ""}</span>
@@ -389,18 +423,24 @@ async function copy(btn){
   if (ok){ btn.textContent = "복사 완료"; setTimeout(() => { btn.textContent = "복사"; }, 1200); }
 }
 document.addEventListener("click", e => {
+  if (e.target.id === "cn-drawer-back" || e.target.closest("#cn-drawer-close")){ closeDrawer(); return; }
   const nav = e.target.closest("[data-nav]");
   if (nav){ e.preventDefault(); setTab(nav.dataset.nav, true); history.replaceState(null, "", "#" + nav.dataset.nav); return; }
-  const f = e.target.closest("[data-filter]");
+  const f = e.target.closest("button[data-filter]");
   if (f){
     C.filter = f.dataset.filter;
-    for (const b of document.querySelectorAll("[data-filter]")) b.setAttribute("aria-pressed", String(b === f));
+    for (const b of document.querySelectorAll("button[data-filter]")) b.setAttribute("aria-pressed", String(b === f));
     applyFilter(); return;
   }
   const c = e.target.closest("[data-copy]");
   if (c){ copy(c); return; }
   const b = e.target.closest("[data-approve],[data-deny]"), node = b && b.closest("[data-approval]");
-  if (node && !b.disabled) answer(node, b.hasAttribute("data-approve"));
+  if (node && !b.disabled){ answer(node, b.hasAttribute("data-approve")); return; }
+  const tr = e.target.closest("[data-log-row]");
+  if (tr && tr.dataset.rowKey) openDrawer(tr.dataset.rowKey);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && C.selRow) closeDrawer();
 });
 window.addEventListener("hashchange", () => setTab(location.hash.slice(1), true));
 

@@ -9,94 +9,125 @@
 <link rel="stylesheet" href="console.css">
 </head>
 <body class="cn" data-tab="log">
-<!-- 문지기 콘솔 — 문지기를 자기 에이전트에 붙인 사람이 여는 운영 화면.
-     칸 넷: 승인 대기 #approvals · 검문 기록 #log · 규칙 #rules · 연결 #connect. 숫자·판정은 전부 서버 응답이다(그리는 일은 console.js).
-     화면에는 라벨·값·단추만 둔다. 영상 녹화가 이 id와 data- 이름을 잡으니 바꾸면 녹화 쪽에 알린다. -->
-<header class="topbar">
-  <a class="name" href="console.html">문지기</a>
-  <span class="cn-product">콘솔</span>
-  <span class="grow"></span>
-  <span class="health" id="status" data-state="wait"><i></i><span id="status-text">확인 중</span><span id="status-policy"></span></span>
-  <a class="consolelink" href="index.html">시연</a>
-</header>
-
+<!-- 녹화용 id(#approvals #log #rules #connect)와 data-* 이름은 그대로 유지한다. -->
 <div class="cn-shell">
-  <div class="cn-left">
+  <aside class="cn-left" aria-label="콘솔 메뉴">
+    <a class="rail-brand" href="console.html">
+      <span class="brand-name">문지기</span>
+    </a>
+
+    <p class="rail-sec">콘솔</p>
     <nav class="cn-nav" aria-label="콘솔 메뉴">
-      <a href="#approvals" data-nav="approvals">승인 대기<span class="cn-n" id="nav-ap-n"></span></a>
-      <a href="#log" data-nav="log" aria-current="page">검문 기록</a>
-      <a href="#rules" data-nav="rules">규칙<span class="cn-n" id="nav-rules-n"></span></a>
-      <a href="#connect" data-nav="connect">연결</a>
+      <a href="#approvals" data-nav="approvals">
+        <span class="cn-nav-l"><svg class="ico" viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>승인 대기</span>
+        <span class="cn-n" id="nav-ap-n"></span>
+      </a>
+      <a href="#log" data-nav="log" aria-current="page">
+        <span class="cn-nav-l"><svg class="ico" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>감사 로그</span>
+      </a>
+      <a href="#rules" data-nav="rules">
+        <span class="cn-nav-l"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6l7-3z"/></svg>사내 정책</span>
+        <span class="cn-n" id="nav-rules-n"></span>
+      </a>
+      <a href="#connect" data-nav="connect">
+        <span class="cn-nav-l"><svg class="ico" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1 0l2.8-2.8a5 5 0 0 0-7.1-7.1L11 4.9"/><path d="M14 11a5 5 0 0 0-7.1 0l-2.8 2.8a5 5 0 0 0 7.1 7.1L13 19.1"/></svg>연동 설정</span>
+      </a>
     </nav>
-    <dl class="cn-state" aria-label="상태">
-      <dt>판정 서버</dt><dd id="st-judge">확인 중</dd>
-      <dt>정책</dt><dd id="st-policy"></dd>
-      <dt>정책 판</dt><dd class="mono" id="st-policy-v"></dd>
-      <dt>규칙 판</dt><dd class="mono" id="st-rules-v"></dd>
-    </dl>
-  </div>
 
-  <main class="cn-main">
-    <section class="cn-panel" id="approvals" tabindex="-1" aria-labelledby="h-approvals" data-pending="0">
-      <header class="cn-h"><h2 id="h-approvals">승인 대기</h2><span class="cn-n" id="ap-n" data-n="0">0</span></header>
-      <div id="ap-list" aria-live="polite"></div>
-      <p class="cn-none" id="ap-none">대기 0건</p>
-      <div id="ap-done-box" hidden>
-        <h3 class="cn-sub">처리 기록</h3>
-        <ul class="cn-done" id="ap-done"></ul>
-      </div>
-    </section>
-
-    <section class="cn-panel" id="log" tabindex="-1" aria-labelledby="h-log">
-      <header class="cn-h">
-        <h2 id="h-log">검문 기록</h2>
-        <span class="cn-live" id="log-live" data-state="wait"><i></i><span id="log-live-text">자동 갱신</span></span>
-        <span class="cn-grow"></span>
-        <div class="cn-seg" role="group" aria-label="결정">
-          <button type="button" data-filter="all" aria-pressed="true">전체</button>
-          <button type="button" data-filter="PASS" aria-pressed="false">통과</button>
-          <button type="button" data-filter="CONFIRM" aria-pressed="false">보류</button>
-          <button type="button" data-filter="BLOCK" aria-pressed="false">차단</button>
-        </div>
-      </header>
-      <div class="cn-tablewrap">
-        <table class="cn-table">
-          <thead><tr>
-            <th class="cn-c-time" scope="col">시각</th>
-            <th class="cn-c-tool" scope="col">도구</th>
-            <th class="cn-c-target" scope="col">대상</th>
-            <th class="cn-c-dec" scope="col">결정</th>
-            <th class="cn-c-why" scope="col">사유</th>
-            <th class="cn-c-ms" scope="col">걸린 시간</th>
-          </tr></thead>
-          <tbody id="log-rows"></tbody>
-        </table>
-        <p class="cn-none" id="log-none">기록 0건</p>
-      </div>
-    </section>
-  </main>
-
-  <aside class="cn-side">
-    <section class="cn-panel" id="rules" tabindex="-1" aria-labelledby="h-rules">
-      <header class="cn-h"><h2 id="h-rules">규칙</h2><span class="cn-n" id="rules-n"></span></header>
-      <div id="rules-list"></div>
-      <p class="cn-none" id="rules-none">규칙 0개</p>
-    </section>
-
-    <section class="cn-panel" id="connect" tabindex="-1" aria-labelledby="h-connect">
-      <header class="cn-h"><h2 id="h-connect">연결</h2></header>
-      <div class="cn-row"><h3 class="cn-label">등록</h3><button type="button" class="cn-copy" data-copy="#connect-cmd">복사</button></div>
-      <pre class="cmd" id="connect-cmd">pi mcp add moonjigi --exposure direct --env MOONJIGI_SCENE=refund-reply -- python3 /절대/경로/mcp/moonjigi_mcp.py</pre>
-      <h3 class="cn-sub">환경변수</h3>
-      <dl class="cn-kv cn-pad" id="connect-env"></dl>
-      <h3 class="cn-sub">도구<span class="cn-n" id="tools-n"></span></h3>
-      <dl class="cn-kv cn-pad" id="connect-tools"></dl>
-      <h3 class="cn-sub">최근 연결<span class="cn-n" id="conn-n"></span></h3>
-      <ul class="cn-conns" id="conn-list"></ul>
-      <p class="cn-none" id="conn-none">연결 0건</p>
-    </section>
+    <div class="rail-foot">
+      <a class="rail-item" href="index.html">
+        <span class="ri-l"><svg class="ico" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>데모</span></span>
+      </a>
+      <a class="rail-item" href="try.html">
+        <span class="ri-l"><svg class="ico" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 20h10.6a2 2 0 0 0 1.7-2.5L14 9V3"/></svg><span>플레이그라운드</span></span>
+      </a>
+      <dl class="cn-state" aria-label="상태">
+        <dt>검증 서버</dt><dd id="st-judge">확인 중</dd>
+        <dt>정책</dt><dd id="st-policy"></dd>
+        <dt>정책 버전</dt><dd class="mono" id="st-policy-v"></dd>
+        <dt>규칙 버전</dt><dd class="mono" id="st-rules-v"></dd>
+      </dl>
+    </div>
   </aside>
+
+  <div class="cn-frame">
+    <header class="frame-top">
+      <div class="frame-title">
+        <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8M12 18v2M7 9l3 2.5L7 14M12 14h5"/></svg>
+        <span>운영 콘솔</span>
+      </div>
+      <span class="grow"></span>
+      <span class="health" id="status" data-state="wait"><i></i><span id="status-text">확인 중</span><span id="status-policy"></span></span>
+      <a class="b sm" href="index.html">데모</a>
+    </header>
+
+    <div class="cn-body">
+      <main class="cn-main">
+        <section class="cn-panel" id="approvals" tabindex="-1" aria-labelledby="h-approvals" data-pending="0">
+          <header class="cn-h"><h2 id="h-approvals">승인 대기</h2><span class="cn-n" id="ap-n" data-n="0">0건</span></header>
+          <div id="ap-list" aria-live="polite"></div>
+          <p class="cn-none" id="ap-none">대기 0건</p>
+          <div id="ap-done-box" hidden>
+            <h3 class="cn-sub">승인 이력</h3>
+            <ul class="cn-done" id="ap-done"></ul>
+          </div>
+        </section>
+
+        <section class="cn-panel" id="log" tabindex="-1" aria-labelledby="h-log">
+          <header class="cn-h">
+            <h2 id="h-log">감사 로그</h2>
+            <span class="cn-live" id="log-live" data-state="wait"><i></i><span id="log-live-text">자동 갱신</span></span>
+            <span class="cn-grow"></span>
+            <div class="cn-seg" role="group" aria-label="결정">
+              <button type="button" data-filter="all" aria-pressed="true">전체</button>
+              <button type="button" data-filter="PASS" aria-pressed="false">통과</button>
+              <button type="button" data-filter="CONFIRM" aria-pressed="false">보류</button>
+              <button type="button" data-filter="BLOCK" aria-pressed="false">차단</button>
+            </div>
+          </header>
+          <div class="cn-tablewrap">
+            <table class="cn-table">
+              <thead><tr>
+                <th class="cn-c-time" scope="col">시각</th>
+                <th class="cn-c-tool" scope="col">툴</th>
+                <th class="cn-c-target" scope="col">대상</th>
+                <th class="cn-c-dec" scope="col">결정</th>
+                <th class="cn-c-why" scope="col">사유</th>
+                <th class="cn-c-ms" scope="col" title="응답 시간 (Latency)">응답 시간</th>
+              </tr></thead>
+              <tbody id="log-rows"></tbody>
+            </table>
+            <p class="cn-none" id="log-none">기록 0건</p>
+          </div>
+        </section>
+      </main>
+
+      <aside class="cn-side">
+        <section class="cn-panel" id="rules" tabindex="-1" aria-labelledby="h-rules">
+          <header class="cn-h"><h2 id="h-rules">사내 정책</h2><span class="cn-n" id="rules-n"></span></header>
+          <div id="rules-list"></div>
+          <p class="cn-none" id="rules-none">정책 0개</p>
+        </section>
+
+        <section class="cn-panel" id="connect" tabindex="-1" aria-labelledby="h-connect">
+          <header class="cn-h"><h2 id="h-connect">연동 설정</h2></header>
+          <div class="cn-row"><h3 class="cn-label">MCP 등록 명령어</h3><button type="button" class="cn-copy" data-copy="#connect-cmd">복사</button></div>
+          <pre class="cmd" id="connect-cmd">pi mcp add moonjigi --exposure direct --env MOONJIGI_SCENE=refund-reply -- python3 /절대/경로/mcp/moonjigi_mcp.py</pre>
+          <h3 class="cn-sub">환경변수</h3>
+          <dl class="cn-kv cn-pad" id="connect-env"></dl>
+          <h3 class="cn-sub">지원 툴<span class="cn-n" id="tools-n"></span></h3>
+          <dl class="cn-kv cn-pad" id="connect-tools"></dl>
+          <h3 class="cn-sub">최근 MCP 세션<span class="cn-n" id="conn-n"></span></h3>
+          <ul class="cn-conns" id="conn-list"></ul>
+          <p class="cn-none" id="conn-none">세션 0건</p>
+        </section>
+      </aside>
+    </div>
+  </div>
 </div>
+
+<div class="cn-drawer-back" id="cn-drawer-back" hidden></div>
+<aside class="cn-drawer inside" id="cn-drawer" hidden aria-label="판별 상세"></aside>
 
 <script src="moonjigi.js"></script>
 <script src="console.js"></script>
