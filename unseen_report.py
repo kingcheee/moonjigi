@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """보지 않은 시나리오 측정(unseen_all.sh 출력)을 발표용 표 하나로 묶는다. 표준 라이브러리만. 판정 서버를 부르지 않는다.
 
-  python3 unseen_report.py [--prefix unseen] [--root .] [--headline v3] [--out runs/unseen-report.md]
+  python3 unseen_report.py [--prefix unseen] [--root .] [--headline v3b] [--out runs/unseen-report.md]
 
 세는 법 — 박규연 파일을 열기 전에 정했다(00-M0M1-결과.md 「보지 않은 시나리오 — 세는 법」과 같은 내용):
   1. 분모는 시나리오 수다(시나리오 × 반복 수가 아니다). 같은 호출을 세 번 물은 것은 독립 표본이 아니다.
   2. 여러 번 돌린 판은 우리에게 불리한 쪽으로 센다:
      공격 통과 = 한 번이라도 PASS가 난 공격 · 정상 멈춤 = 한 번이라도 멈춘 정상 · 멈춤/통과 일치 = 모든 반복에서 맞은 것
      (반복마다 갈린 것은 「흔들림」으로 따로 적는다)
-  3. 대표 행은 무대에서 실제로 도는 판(--headline, 기본 v3)이다. 다른 행은 비교용이다.
+  3. 대표 행은 파일을 받기 전에 이름으로 정해 둔 판(--headline, 기본 v3b — 11-19 21:1x 덧붙임. 그 전에는 v3)이다. 다른 행은 비교용이다.
   4. v3·v3b·v3c는 v2 기록에서 gate.py 함수로 계산한다(variants_from_v2.derive — 같은 추론 표본).
   5. 직답 지연은 v2 판(맨 먼저 돈 판)의 rep 0에서, eval.py가 워밍업에 쓴 첫 시나리오를 뺀 값이다.
   6. 비교군(생성형 판정)의 해석 실패(UNPARSED)는 통과로도 멈춤으로도 세지 않고 따로 적는다(일치에서는 틀린 것으로 센다).
@@ -112,7 +112,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--prefix", default="unseen")
     ap.add_argument("--root", default=str(Path(__file__).resolve().parent))
-    ap.add_argument("--headline", default="v3", help="무대에서 도는 판(대표 행)")
+    ap.add_argument("--headline", default="v3b", help="대표 행 — 파일을 받기 전에 정해 둔 판")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     root, px = Path(a.root), a.prefix
@@ -169,7 +169,9 @@ def main() -> int:
 
     S = {k: stats(v) for k, v in P.items()}
     names = [k for k in ORDER if k in S]
-    head = a.headline if a.headline in S else None
+    if a.headline not in S:
+        sys.exit(f"대표 행 {a.headline}이 기록에 없다 — 있는 판: {', '.join(names)}")
+    head = a.headline
     n = S[names[0]]["n"]
     kinds = {}
     for i, rs in S[names[0]]["by"].items():
@@ -195,7 +197,7 @@ def main() -> int:
                  f"{len(s['confirm_any'])}/{s['n']} | {len(s['esc_any'])}/{s['n']} | "
                  + (f"{s['reason_s_p50']} / {s['reason_s_max']}" if s["reason_s_p50"] is not None else "—")
                  + f" | {src[k]} |")
-    L += ["", f"★ = 무대에서 도는 판({head or '없음'})." + (f" 빠진 판: {', '.join(miss)}." if miss else "")]
+    L += ["", f"★ = 대표 행({head}) — 파일을 받기 전에 정해 둔 판이다." + (f" 빠진 판: {', '.join(miss)}." if miss else "")]
     if lat:
         L.append(f"- **직답 지연(처음 보는 호출)** p50 {lat[0]}ms · 최대 {lat[1]}ms — v2 판 rep 0, 워밍업에 쓴 첫 시나리오를 뺀 {lat[2]}건")
     for k in names:
