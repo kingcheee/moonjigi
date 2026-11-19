@@ -1,13 +1,13 @@
 /* 문지기 콘솔 — console.html이 쓴다. moonjigi.js(시연 화면과 같이 쓰는 스크립트) 뒤에 읽힌다. 빌드 도구 없음.
 
-   칸 넷과 데이터가 오는 곳 — 화면의 숫자·판정은 전부 서버 응답이다. 지어낸 행은 없고, 비면 「없음」.
+   칸 넷과 데이터가 오는 곳 — 화면의 숫자·판정은 전부 서버 응답이다. 지어낸 행은 없고, 비면 「0건」.
    - 승인 대기 #approvals : GET /worker/runs 의 안 끝난 판 → GET /worker/events 가 live && waiting 인 것 → POST /worker/confirm
                             (Zoro-1 일꾼 판만. 다른 에이전트(MCP) 건은 허락하는 길이 서버에 없다 — 검문 기록에 「보류」로만 보인다)
    - 검문 기록 #log       : GET /log?n=50 — HTTP로 들어온 검문(다른 에이전트의 호출 · try.html의 묻기). 2초마다 읽어 새 줄을 위에 붙인다
    - 규칙 #rules          : GET /health 의 rules. 서버는 「켜 둔 상태」를 저장하지 않는다(요청마다 넘긴다) — 스위치를 그리지 않는다
    - 연결 #connect        : 등록 명령(정적) · GET /health 의 정책 판 · GET /worker/runs 의 MCP 판
 
-   말투: 라벨·값·단추만. 문장을 화면에 내지 않는다(api()의 오류 글도 내지 않는다).
+   말투: 라벨·값·단추만. 문장을 화면에 내지 않고, 낱말은 명사로 끝낸다(시연 화면과 같은 기준). api()의 오류 글도 내지 않는다.
    녹화용 이름: #approvals #log #rules #connect · [data-log-row][data-decision=PASS|CONFIRM|BLOCK|REASON]
                · [data-approval] 안의 [data-approve] [data-deny] · [data-filter] · [data-nav] · #connect-cmd · [data-conn] */
 (() => {
@@ -117,8 +117,8 @@ function renderStatus(state){
   const h = C.health || {}, s = el("status");
   s.dataset.state = state;
   s.className = "health " + (state === "ok" ? "ok" : "bad");
-  const word = {ok:"연결됨", bad:"끊김", down:"무응답"}[state];
-  text("status-text", state === "down" ? "문지기 무응답" : "판정 서버 " + word);
+  const word = {ok:"연결", bad:"무응답", down:"연결 실패"}[state];           // 시연 화면의 위 띠와 같은 말
+  text("status-text", state === "down" ? "서버 연결 실패" : "판정 서버 " + word);
   text("status-policy", h.policy ? "정책 " + h.policy : "");
   text("st-judge", word);
   el("st-judge").className = state === "ok" ? "t-pass" : "t-block";
@@ -137,7 +137,7 @@ function renderRules(){
       <dt>이름</dt><dd class="mono">${esc(id)}</dd>
       <dt>대상</dt><dd>${esc(KIND_KO[r.effect] || r.effect || "")}</dd>
       <dt>문턱</dt><dd>${esc(r.threshold ?? "")}</dd>
-      <dt>걸리면</dt><dd>사람 확인</dd>
+      <dt>조치</dt><dd>사람 확인</dd>
       <dt>적용</dt><dd>요청마다</dd>
       <dt>MCP</dt><dd class="mono">MOONJIGI_RULES=${esc(id)}</dd>
       <dt>HTTP</dt><dd class="mono">"rules": ["${esc(id)}"]</dd>
@@ -305,7 +305,7 @@ function approvalHTML(it){
   }
   return `<div class="cn-ap-head">
     <p class="cn-ap-what"><b>${esc(t.ko)}</b>${tgt ? `<span title="${esc(tgt)}">· ${esc(tgt)}</span>` : ""}</p>
-    <span class="cn-ap-left">만료까지 <span data-left></span></span>
+    <span class="cn-ap-left">남은 시간 <span data-left></span></span>
     <span class="cn-ap-act"><button type="button" class="b" data-deny>거절</button><button type="button" class="b main" data-approve>허락</button></span>
   </div>
   <dl class="cn-kv">${rows.filter(r => r[1]).map(([k, x, cls]) => `<dt>${esc(k)}</dt><dd${cls ? ` class="${cls}"` : ""}>${esc(x)}</dd>`).join("")}</dl>`;
@@ -331,7 +331,7 @@ function renderApprovals(waiting){
   document.title = (n ? `(${n}) ` : "") + "문지기 콘솔";
   tickLeft();
 }
-function tickLeft(){                                  // 만료까지 남은 시간
+function tickLeft(){                                  // 사람 확인이 만료될 때까지 남은 시간
   for (const {node, it} of C.waiting.values()){
     const out = node.querySelector("[data-left]");
     if (!out) continue;

@@ -1,7 +1,7 @@
 /* 문지기 콘솔 — console.html만 쓴다. shared.css 뒤에 읽힌다.
    색·글꼴·간격·모서리·선 굵기는 shared.css 맨 위 :root 토큰만 쓴다(디자인이 바뀌면 토큰 값만 바뀐다). 색 값을 여기 적지 않는다.
    이름은 전부 cn- 로 시작한다(시연 화면의 이름과 겹치지 않게). shared.css에서 빌려 쓰는 것: .topbar .name .grow .health .consolelink .b .cmd .mono .t-*
-   넓은 화면(1100px 이상) = 메뉴 | 승인 대기 + 검문 기록 | 규칙 + 연결 이 한눈에. 그보다 좁으면 메뉴가 탭이 되고 칸을 하나씩 본다.
+   넓은 화면(1280px 이상) = 메뉴 | 승인 대기 + 검문 기록 | 규칙 + 연결 이 한눈에. 그보다 좁으면 메뉴가 탭이 되고 칸을 하나씩 본다.
    720px 아래에서는 검문 기록의 한 줄이 두 줄짜리 묶음이 된다. */
 
 body.cn{height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-size:var(--fs-s);line-height:1.5}
@@ -9,7 +9,7 @@ body.cn{height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-si
 #status-policy:not(:empty)::before{content:" · "}
 
 /* ── 뼈대 ───────────────────────────────────────────── */
-.cn-shell{flex:1;min-height:0;display:grid;grid-template-columns:208px minmax(0,1fr) 368px}
+.cn-shell{flex:1;min-height:0;display:grid;grid-template-columns:208px minmax(0,1fr) 352px}
 .cn-left{min-height:0;display:flex;flex-direction:column;overflow:auto;padding:var(--s3) var(--s2);background:var(--side,var(--surface));border-right:var(--rule) solid var(--line)}
 .cn-main{min-width:0;min-height:0;display:flex;flex-direction:column}
 .cn-side{min-width:0;min-height:0;overflow:auto;border-left:var(--rule) solid var(--line)}
@@ -87,10 +87,10 @@ body.cn{height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-si
 .cn-table th:last-child,.cn-table td:last-child{padding-right:var(--s5)}
 .cn-table tbody tr:hover{background:var(--side,var(--surface))}
 .cn-c-time{width:104px}
-.cn-c-tool{width:132px}
-.cn-c-dec{width:132px}
+.cn-c-tool{width:128px}
+.cn-c-dec{width:112px}
 .cn-c-why{width:25%}
-.cn-c-ms{width:104px}
+.cn-c-ms{width:96px}
 .cn-table .cn-c-ms{text-align:right}
 td.cn-c-time,td.cn-c-ms{color:var(--ink-2);font-variant-numeric:tabular-nums}
 td.cn-c-tool{font-weight:var(--fw-semi,600)}
@@ -136,8 +136,8 @@ td.cn-c-target,td.cn-c-why{color:var(--ink-2)}
 .cn-conns .cn-meta{grid-column:1/-1;font-size:var(--fs-xs);color:var(--muted);font-variant-numeric:tabular-nums}
 .cn-conns .cn-meta b{font-weight:var(--fw-semi,600)}
 
-/* ── 1100px 아래: 메뉴가 탭, 칸은 하나씩 ─────────────────── */
-@media (max-width:1099px){
+/* ── 1280px 아래: 메뉴가 탭, 칸은 하나씩 ─────────────────── */
+@media (max-width:1279px){
   .cn-shell{display:flex;flex-direction:column}
   .cn-left{flex:none;display:block;overflow:visible;padding:0 var(--s3);background:var(--bg);border-right:0;border-bottom:var(--rule) solid var(--line)}
   .cn-nav{flex-direction:row;gap:0;overflow-x:auto;scrollbar-width:none}
