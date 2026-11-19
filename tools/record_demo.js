@@ -56,7 +56,8 @@ const SCENES = {
     const pi = spawn('python3', ['mcp/run_pi.py', '--scene', 'refund-reply', '--rules', 'pii', '--gate', BASE, '--runs-dir', runs],
       { cwd: REPO, stdio: ['ignore', fs.openSync(path.join(OUT, 'scene-5-pi.out'), 'w'), 'inherit'] });
     mark('다른 에이전트 시작(pi + 문지기 MCP · 실제 실행)');
-    pi.on('exit', c => mark(`다른 에이전트 끝(종료 코드 ${c})`));
+    let piCode = null;
+    pi.on('exit', c => { piCode = c; mark(c === 0 ? '다른 에이전트 끝(종료 코드 0)' : `⚠ 다른 에이전트 종료 코드 ${c}`); });
     const log = await page.$('#log');
     if (log) { await at(4.0); await log.scrollIntoViewIfNeeded(); mark('검문 기록 칸'); }
     // 새 줄이 생길 때만 표시(최대 약 20초). 「최근 연결」은 기다리지 않는다 — pi 판 기록은 노트북에 남아 공개 서버 목록에 안 생긴다
@@ -70,6 +71,9 @@ const SCENES = {
       if (n !== last) { last = n; mark(`검문 기록 ${n - before}줄 늘어남`); }
       if (await confirms() > c0) { mark('보류 줄(사람 확인) 뜸'); break; }
     }
+    if (await confirms() <= c0) mark('⚠ 보류 줄이 안 뜸(무료 호출 한도 · 모델이 안 속음 등 — scene-5-pi.out 확인)');
+    await at(24.5);
+    if (piCode === null) mark('⚠ 다른 에이전트가 장면 안에 안 끝남');
   } },
 };
 
@@ -134,6 +138,7 @@ function encode(dir, frames, dur, mp4) {
     const mp4 = path.join(OUT, `scene-${n}.mp4`);
     encode(dir, frames, sc.dur, mp4);
     const fps = (frames.length / sc.dur).toFixed(1);
+    if (frames.length / sc.dur < 12) marks.push([sc.dur, `⚠ 프레임 ${fps}/초 — 컴퓨터가 바쁠 때 찍힘(끊겨 보임) · 한가할 때 다시`]);
     report.push(`장면 ${n} ${sc.name}: ${mp4} · 프레임 ${frames.length}장(${fps}/초) · 콘솔 에러 ${errs.length} · 가로 넘침 ${sw > 0 ? sw + 'px' : 0} · ${marks.filter(m => m[1].startsWith('⚠')).map(m => m[1]).join(' ') || '경고 없음'}`);
   }
   await browser.close();

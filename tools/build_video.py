@@ -23,7 +23,9 @@ import sys
 from pathlib import Path
 
 AUDIO_EXT = (".m4a", ".wav", ".mp3", ".ogg", ".webm", ".aac", ".flac")
-STYLE = "FontName=Pretendard,FontSize=20,Outline=1,Shadow=0,MarginV=40"
+# 화면 맨 아래 입력 줄 위에 반투명 상자로 — 결정 띠 · 「끝난 뒤」(보낸 메일 0통 · 차단 27건)를 가리지 않는다(18:3x 장면 끝 프레임으로 확인).
+# FontSize=20 · MarginV=40은 「끝난 뒤」를 덮었다.
+STYLE = "FontName=Pretendard,FontSize=13,Bold=1,BorderStyle=3,Outline=6,Shadow=0,BackColour=&H33000000,OutlineColour=&H33000000,MarginV=4"
 SLOT = 100.0          # 발표 3장에 잡힌 영상 자리(초)
 TAIL = 0.4            # 녹음이 끝난 뒤 장면을 넘기기 전 여유(초)
 
@@ -118,7 +120,7 @@ def main() -> int:
     ap.add_argument("--scenes", default="1,2,3,4,5")
     ap.add_argument("--lead", type=float, default=0.3, help="장면 시작에서 녹음이 시작하기까지(초)")
     ap.add_argument("--no-subs", action="store_true", help="자막을 굽지 않는다(.srt는 그대로 쓴다)")
-    ap.add_argument("--style", default=STYLE, help=f"자막 모양(libass force_style · 기본 {STYLE}) — 바탕 상자는 BorderStyle=3,BackColour=&H80000000")
+    ap.add_argument("--style", default=STYLE, help="자막 모양(libass force_style) — 기본은 맨 아래 반투명 상자")
     a = ap.parse_args()
 
     if a.extract_cues:
