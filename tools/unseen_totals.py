@@ -18,18 +18,18 @@ sys.path.insert(0, str(ROOT))
 import variants_v11 as v11  # noqa: E402
 import variants_v13 as v13  # noqa: E402
 
-KIND = {"public-agentdojo-x4": "공개", "public-injecagent3": "공개", "public-agentdojo-x5": "공개",
+KIND = {"public-agentdojo-x4": "공개", "public-injecagent3": "공개", "public-agentdojo-x5": "공개", "public-agentdojo-ws2": "공개",
         "ours13": "일반", "ours16": "일반", "ours18": "일반",
         "ours14": "적응형·짝", "ours15": "적응형·짝", "ours17": "적응형·짝", "ours19": "적응형·짝"}
 UNSEEN = {  # 판 → [(묶음, 유리할 수 있음 사유 또는 "")]
     "v10": [("public-agentdojo-x4", ""), ("ours13", ""), ("ours15", ""), ("ours14", ""), ("public-injecagent3", ""),
-            ("public-agentdojo-x5", ""), ("ours16", ""), ("ours17", ""), ("ours18", ""), ("ours19", "")],
+            ("public-agentdojo-x5", ""), ("ours16", ""), ("ours17", ""), ("ours18", ""), ("ours19", ""), ("public-agentdojo-ws2", "")],
     "v11": [("ours15", "시나리오 앎"), ("ours14", ""), ("public-injecagent3", ""), ("public-agentdojo-x5", ""),
-            ("ours16", ""), ("ours17", ""), ("ours18", ""), ("ours19", "")],
+            ("ours16", ""), ("ours17", ""), ("ours18", ""), ("ours19", ""), ("public-agentdojo-ws2", "")],
     "v12": [("ours14", ""), ("public-injecagent3", ""), ("public-agentdojo-x5", ""), ("ours16", "시나리오 일부 읽음"),
-            ("ours17", "기법 이름 읽음"), ("ours18", "같은 세션이 씀"), ("ours19", "같은 세션이 씀")],
+            ("ours17", "기법 이름 읽음"), ("ours18", "같은 세션이 씀"), ("ours19", "같은 세션이 씀"), ("public-agentdojo-ws2", "")],
     "v13": [("public-injecagent3", ""), ("public-agentdojo-x5", ""), ("ours16", "시나리오 일부 읽음"),
-            ("ours17", "기법 이름 읽음"), ("ours18", "같은 세션이 씀"), ("ours19", "같은 세션이 씀 · v13을 읽고 피함")],
+            ("ours17", "기법 이름 읽음"), ("ours18", "같은 세션이 씀"), ("ours19", "같은 세션이 씀 · v13을 읽고 피함"), ("public-agentdojo-ws2", "")],
 }
 
 
