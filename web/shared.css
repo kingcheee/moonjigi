@@ -182,7 +182,7 @@ body.app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .composer{flex:none;border-top:var(--rule) solid var(--line);padding:var(--s3) var(--s6) var(--s3);background:var(--bg)}
 .composer .lab{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 var(--s4);margin:0 0 var(--s1);font-size:var(--fs-xs);color:var(--muted)}
 .sendrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s2);align-items:stretch}
-.sendrow .say{display:flex;align-items:center;min-height:48px;padding:var(--s2) var(--s3);border:var(--rule) solid var(--line-2);border-radius:var(--radius);font-size:17px;font-weight:var(--fw-semi);background:var(--bg);text-align:left}
+.sendrow .say{display:flex;align-items:center;min-height:48px;padding:var(--s2) 0;font-size:17px;font-weight:var(--fw-semi);text-align:left}
 .sendrow .b{min-height:48px;padding:0 var(--s5)}
 .composer .under{display:flex;flex-wrap:wrap;gap:2px var(--s4);align-items:baseline;margin:var(--s1) 0 0;font-size:var(--fs-xs);color:var(--muted)}
 .composer .under .grow{flex:1}
