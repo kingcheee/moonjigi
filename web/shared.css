@@ -36,7 +36,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 [hidden]{display:none!important}
-.mono,code,pre,kbd,.code,.cmd{font-variant-ligatures:none}
+.mono,code,pre,kbd,.code,.cmd{font-variant-ligatures:none!important}   /* 뒤에 오는 font 줄임 속성이 이 값을 되돌리지 못하게 — 안 그러면 >= 가 ≥ 로 찍힌다 */
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .t-pass{color:var(--pass)} .t-ask{color:var(--ask)} .t-block{color:var(--block)} .t-muted{color:var(--muted)}
 kbd{font:500 11.5px/1 var(--mono);color:var(--muted);border:var(--rule) solid var(--line-2);border-radius:4px;padding:2px 5px;background:var(--bg)}
@@ -57,10 +57,11 @@ kbd{font:500 11.5px/1 var(--mono);color:var(--muted);border:var(--rule) solid va
 .topbar{display:flex;align-items:center;gap:var(--s5);min-height:52px;padding:0 var(--s5);border-bottom:var(--rule) solid var(--line);flex:none}
 .topbar .name{font-size:var(--fs-l);font-weight:700;text-decoration:none;letter-spacing:-.01em}
 .stepnav{display:flex;gap:2px;min-width:0}
-.stepnav button,.stepnav a{border:0;background:none;padding:6px 12px;border-radius:var(--radius);color:var(--muted);font-size:15px;font-weight:500;text-decoration:none;white-space:nowrap}
-.stepnav button:hover,.stepnav a:hover{color:var(--ink)}
-.stepnav [aria-current]{color:var(--ink);background:var(--surface);font-weight:700}
-.stepnav .sep{width:var(--rule);background:var(--line);margin:6px var(--s2)}
+.stepnav button,.stepnav a,.trylink{border:0;background:none;padding:6px 12px;border-radius:var(--radius);color:var(--muted);font-size:15px;font-weight:500;text-decoration:none;white-space:nowrap}
+.stepnav button:hover,.stepnav a:hover,.trylink:hover{color:var(--ink)}
+.stepnav [aria-current],.trylink[aria-current]{color:var(--ink);background:var(--surface);font-weight:700}
+.trylink{position:relative;margin-left:calc(-1 * var(--s2))}       /* 걸음 다섯 옆의 여섯째 자리 — 좁은 화면에서는 윗줄 오른쪽으로 간다 */
+.trylink::before{content:"";position:absolute;left:calc(-1 * var(--s2) - 1px);top:8px;bottom:8px;width:var(--rule);background:var(--line)}
 .topbar .grow{flex:1}
 .health{font-size:var(--fs-xs);color:var(--muted);white-space:nowrap}
 .health i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--line-2);margin-right:6px;vertical-align:1px}
@@ -89,7 +90,7 @@ body.app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--bg);transition:left .15s}
 .sw[aria-checked="true"]{background:var(--ink)}
 .sw[aria-checked="true"]::after{left:20px}
-.cmd{margin:var(--s1) 0;padding:var(--s2) var(--s3);background:var(--surface);border-radius:var(--radius);font:13px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
+.cmd{margin:var(--s1) 0;padding:var(--s2) var(--s3);background:var(--surface);border-radius:var(--radius);font:13px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;word-break:keep-all}
 
 /* 비서의 일이 쌓이는 곳 */
 .thread{flex:1;min-height:0;overflow:auto;padding:var(--s5) var(--s6) var(--s6)}
@@ -103,7 +104,7 @@ body.app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 /* 조용히 지나간 호출 한 줄 */
 .rowq{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s3);align-items:baseline;width:100%;text-align:left;border:0;background:none;
   padding:7px var(--s2);margin:0 calc(-1 * var(--s2));border-radius:var(--radius);font-size:var(--fs-m)}
-.rowq:hover,.rowq.sel{background:var(--surface)}
+.rowq:hover,.desk.open .rowq.sel{background:var(--surface)}
 .rowq .what b{font-weight:600}
 .rowq .what span{color:var(--ink-2)}
 .rowq .out{font-size:var(--fs-s);font-weight:600;white-space:nowrap}
@@ -131,6 +132,7 @@ body.app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .bulk.one{columns:1;font-size:var(--fs-l);padding:var(--s3) var(--s4)}
 .argsdl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px var(--s3);margin:0;padding:var(--s3) var(--s4);font-size:15px}
 .argsdl dt{color:var(--muted)} .argsdl dd{margin:0;overflow-wrap:anywhere}
+.thing + .rowq{margin-top:var(--s2)}
 
 /* 그 위에 찍히는 문지기의 결정 */
 .ruling{padding:var(--s3) var(--s4);border-top:var(--rule) solid var(--line);background:var(--surface)}
@@ -236,24 +238,29 @@ textarea.inp{resize:vertical;min-height:120px}
 .mailhead input[type=text]:focus,.mailbody textarea:focus{outline:0;border-color:var(--focus)}
 .mailhead input[type=checkbox]{width:18px;height:18px;margin:4px 0}
 .mailhead label{color:var(--muted)}
-.mailbody textarea{display:block;width:100%;min-height:150px;border:var(--rule) solid transparent;background:none;resize:vertical;padding:0;font-size:var(--fs-m);line-height:1.6}
-.askrow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);margin-top:var(--s4)}
-.askrow .b{min-height:48px;padding:0 var(--s5)}
+.mailbody textarea{display:block;width:100%;min-height:112px;border:var(--rule) solid transparent;background:none;resize:vertical;padding:0;font-size:var(--fs-m);line-height:1.6}
+/* 묻는 곳 — 시연 화면의 「시키는 곳」 자리. 회사 규칙 스위치와 묻기 단추가 늘 보인다 */
+.askbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s2) var(--s4);align-items:center}
+.askbar .setting{margin:0;padding:0;border:0}
+.askbar .b{min-height:48px;padding:0 var(--s5)}
+#ruling{scroll-margin-bottom:var(--s4)}
 .thread details.raw{margin-top:var(--s5);font-size:var(--fs-s);color:var(--ink-2)}
 .thread details.raw pre{margin:var(--s1) 0 0;padding:var(--s2);background:var(--surface);border-radius:var(--radius);font:12px/1.55 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
 
 /* ── 좁은 화면(휴대폰): 한 줄로 쌓고, 시키는 곳은 아래에 붙인다 ───── */
 @media (max-width:900px){
-  body.app{height:auto;display:block;overflow:visible}
+  body.app{height:auto;min-height:100dvh;overflow:visible}          /* 세로로 쌓되, 내용이 짧아도 시키는 곳이 화면 아래에 붙게 */
   .topbar{flex-wrap:wrap;gap:0 var(--s3);padding:var(--s2) var(--s4) 0;position:sticky;top:0;z-index:5;background:var(--bg)}
   .topbar .name{font-size:var(--fs-m)}
+  .topbar .name{order:0} .topbar .grow{order:1} .trylink{order:2} .health{order:2}
   .stepnav{order:3;width:100%;margin:2px calc(-1 * var(--s2)) 0;overflow-x:auto;scrollbar-width:none}
   .stepnav::-webkit-scrollbar{display:none}
   .stepnav button,.stepnav a{padding:8px 9px;font-size:var(--fs-s)}
-  .stepnav .sep{display:none}
-  .desk,.desk.open{display:flex;flex-direction:column}
+  .trylink{margin:0;padding:4px 8px;font-size:var(--fs-xs);text-decoration:underline;text-underline-offset:3px}
+  .trylink::before{display:none}
+  .desk,.desk.open{flex:1;display:flex;flex-direction:column}
   .work{display:contents}
-  .brief{order:1} .world{order:2} .thread{order:3} .composer{order:4}
+  .brief{order:1} .world{order:2;flex:none} .thread{order:3} .composer{order:4}
   .thread .fine{display:block}
   .turn{scroll-margin-bottom:150px}
   .world{border-right:0;border-bottom:var(--rule) solid var(--line);padding:var(--s3) 0}
@@ -264,7 +271,7 @@ textarea.inp{resize:vertical;min-height:120px}
   .world .wbody.shut{display:none}
   .brief{padding:var(--s4) var(--s4) var(--s3)}
   .brief h1{font-size:20px}
-  .thread{overflow:visible;padding:var(--s4) var(--s4) var(--s5)}
+  .thread{flex:1 0 auto;overflow:visible;padding:var(--s4) var(--s4) var(--s5)}
   .turn .req{font-size:19px}
   .composer{position:sticky;bottom:0;z-index:4;padding:var(--s2) var(--s4) calc(var(--s2) + env(safe-area-inset-bottom,0px))}
   .sendrow .say{font-size:15px;min-height:44px}
@@ -272,6 +279,18 @@ textarea.inp{resize:vertical;min-height:120px}
   .bulk{columns:2}
   .setting{grid-template-columns:auto minmax(0,1fr)}
   .setting .v{grid-column:1/-1}
+  /* 직접 넣어 보기 — 묻는 곳: 윗줄에 스위치와 단추, 아랫줄에 규칙 글 */
+  .askbar{grid-template-columns:auto auto minmax(0,1fr);gap:var(--s1) var(--s2)}
+  .askbar .setting{display:contents}
+  .askbar .setting .k{grid-area:1/1} .askbar .setting .sw{grid-area:1/2}
+  .askbar .b{grid-area:1/3;justify-self:end;min-height:44px;padding:0 var(--s4)}
+  .askbar .setting .v{grid-area:2/1/3/-1;font-size:var(--fs-xs);color:var(--ink-2)}
+  .askbar .setting .d{display:none}
+  #ruling{scroll-margin-bottom:130px}
+  /* 넣는 칸은 16px 아래로 내리지 않는다 — iOS 사파리가 칸을 누를 때 화면을 확대한다 */
+  .world .pad .inp,.mailhead input[type=text],.thing-h select,.inp,.mailbody textarea{font-size:16px}
+  .inp.big{font-size:19px}
+  .world .pad textarea#source{height:132px;min-height:0}
   .inside{position:fixed;left:0;right:0;bottom:0;z-index:10;max-height:82dvh;background:var(--bg);border-left:0;border-top:var(--rule) solid var(--line-2);
     box-shadow:0 -8px 24px rgba(0,0,0,.12);padding:var(--s4) var(--s4) calc(var(--s5) + env(safe-area-inset-bottom,0px))}
   kbd{display:none}

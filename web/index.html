@@ -13,6 +13,7 @@
 <header class="topbar">
   <a class="name" href="index.html">문지기</a>
   <nav class="stepnav" id="nav" aria-label="시연 순서"></nav>
+  <a class="trylink" href="try.html">직접 넣어 보기</a>
   <span class="grow"></span>
   <span class="health" id="health"><i></i>문지기 확인 중</span>
 </header>
@@ -247,8 +248,7 @@ function primary(){
 function render(){ renderNav(); renderBrief(); renderWorld(); renderThread(); renderComposer(); renderInside(); }
 
 function renderNav(){
-  $("#nav").innerHTML = STEPS.map((s, i) => `<button type="button" data-go="${i}"${i === T.cur ? ` aria-current="step"` : ""}>${esc(s.key)}</button>`).join("")
-    + `<span class="sep"></span><a href="try.html">직접 넣어 보기</a>`;
+  $("#nav").innerHTML = STEPS.map((s, i) => `<button type="button" data-go="${i}"${i === T.cur ? ` aria-current="step"` : ""}>${esc(s.key)}</button>`).join("");
 }
 
 function renderBrief(){

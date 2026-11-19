@@ -8,14 +8,14 @@
 <link rel="stylesheet" href="shared.css">
 </head>
 <body class="app">
-<!-- 직접 넣어 보기: 왼쪽 = 비서가 읽은 글 / 가운데 = 시킨 일 + 비서가 하려는 일(고쳐 쓸 수 있다) + 문지기의 결정 / 오른쪽 = 문지기가 본 것
+<!-- 직접 넣어 보기: 왼쪽 = 비서가 읽은 글 / 가운데 = 시킨 일 + 비서가 하려는 일(고쳐 쓸 수 있다) + 문지기의 결정 / 아래 = 묻는 곳(회사 규칙 · 묻기) / 오른쪽 = 문지기가 본 것
      시연 화면(index.html)과 같은 문법이다. 예시는 아래 PRESETS, 도구별 칸은 FIELDS에서 고친다. -->
 <header class="topbar">
   <a class="name" href="index.html">문지기</a>
   <nav class="stepnav" aria-label="시연 순서">
     <a href="index.html#1">평소 일</a><a href="index.html#2">실수</a><a href="index.html#3">속음</a><a href="index.html#4">규칙 밖</a><a href="index.html#5">다른 에이전트</a>
-    <span class="sep"></span><a href="try.html" aria-current="page">직접 넣어 보기</a>
   </nav>
+  <a class="trylink" href="try.html" aria-current="page">직접 넣어 보기</a>
   <span class="grow"></span>
   <span class="health" id="health"><i></i>문지기 확인 중</span>
 </header>
@@ -43,7 +43,7 @@
       <p class="lead">사용자가 시킨 말과 비서가 하려는 일을 적으면, 문지기가 Zoro-1에게 물어 정한 결과를 그대로 보여 줍니다.</p>
       <div class="presets" id="presets"></div>
     </div></section>
-    <section class="thread"><div class="col">
+    <section class="thread" id="thread"><div class="col">
       <form id="form">
         <label class="lab2" for="req">시킨 일 — 사용자가 처음 한 말</label>
         <input class="inp big" id="req" type="text" maxlength="500" required placeholder="고객 문의 메일에 답장해줘">
@@ -52,13 +52,17 @@
           <div id="fields"></div>
           <div id="ruling"></div>
         </article>
+      </form>
+      <details class="raw"><summary>문지기에게 보내는 요청 원문</summary><pre id="preview"></pre></details>
+    </div></section>
+    <section class="composer"><div class="col">
+      <div class="askbar">
         <div class="setting"><span class="k">회사 규칙</span>
           <button type="button" class="sw" id="rule" role="switch" aria-checked="false" aria-label="회사 규칙 켜기"></button>
           <span class="v" id="ruletext"></span>
           <span class="d">켜면 밖으로 보내는 호출에 이 질문을 하나 더 묻습니다. 멈추는 쪽으로만 씁니다.</span></div>
-        <div class="askrow"><button class="b main" id="ask">문지기에게 묻기</button><span class="hint" id="state"></span></div>
-      </form>
-      <details class="raw"><summary>문지기에게 보내는 요청 원문</summary><pre id="preview"></pre></details>
+        <button class="b main" id="ask" form="form">문지기에게 묻기</button>
+      </div>
     </div></section>
   </main>
   <aside class="inside" id="inside" aria-label="문지기가 본 것"></aside>
@@ -156,14 +160,15 @@ function failWords(e){
   if (e.status === 502) return "판정 서버(Zoro-1)에 닿지 못했습니다. 잠시 뒤 다시 물어 주세요.";
   return "판정을 받지 못했습니다 — " + e.message;
 }
-function showFail(e){ $("#ruling").innerHTML = `<div class="ruling"><p class="h">판정을 받지 못했습니다</p><p class="why">${esc(failWords(e))}</p></div>`; }
+function showFail(e){ $("#ruling").innerHTML = `<div class="ruling"><p class="h">판정을 받지 못했습니다</p><p class="why">${esc(failWords(e))}</p></div>`; showRuling(); }
+function showRuling(){ $("#ruling").scrollIntoView({block:"nearest"}); }      // 결정 띠가 화면 밖이면 보이는 데까지만 옮긴다
 async function ask(ev){
   ev.preventDefault();
   if (T.busy) return;
   const body = buildBody();
   if (!body.call.user_request){ $("#req").focus(); return; }
   T.busy = true; $("#ask").disabled = true;
-  $("#ruling").innerHTML = `<div class="ruling"><p class="h pulse">문지기가 확인하는 중…</p></div>`;
+  $("#ruling").innerHTML = `<div class="ruling"><p class="h pulse">문지기가 확인하는 중…</p></div>`; showRuling();
   try {
     const v = await api("/gate/direct", body);
     T.last = {call:body.call, v, final:!v.needs_reason};
@@ -189,7 +194,7 @@ function renderResult(){
     <p class="why">막을 이유도, 그냥 통과시킬 확신도 없습니다.</p>
     <p class="sub">실제 비서였다면 여기서 Zoro-1이 생각을 적은 뒤 같은 질문에 다시 답합니다. 몇 초에서 수십 초가 걸립니다.</p>
     <div class="act">${L.thinking ? "" : `<button type="button" class="b" id="more">더 따져 보게 하기</button>`}<span class="grow"></span><button type="button" class="linkish" data-peek="try">문지기가 본 것</button></div></div>`;
-  renderInside();
+  renderInside(); showRuling();
 }
 function renderInside(){
   $("#desk").classList.toggle("open", T.inside);
