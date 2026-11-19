@@ -132,7 +132,7 @@ h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:600;margin
 </head>
 <body>
 <header>
-  <div class="brand"><b>문지기</b><span>Zoro-1이 일하고, 같은 Zoro-1이 호출마다 검문한다</span></div>
+  <div class="brand"><b>문지기</b><span id="brand-sub">Zoro-1이 일하고, 같은 Zoro-1이 호출마다 검문한다</span></div>
   <div class="group" id="scenes"><label>라이브</label></div>
   <div class="group"><label>정책</label>
     <select id="policy" aria-label="정책 판"></select>
@@ -148,7 +148,7 @@ h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:600;margin
 </header>
 <main>
   <section class="col" aria-label="일꾼">
-    <h2>일꾼 Zoro-1 — 사용자 요청과 도구 호출</h2>
+    <h2 id="worker-h">일꾼 Zoro-1 — 사용자 요청과 도구 호출</h2>
     <div id="task" class="task" hidden></div>
     <div id="stream" class="stream"><div class="empty">위에서 장면을 고르면 일꾼이 일을 시작합니다. 키보드 1~5 = 라이브 장면 · Y/N = 사람 확인</div></div>
   </section>
@@ -172,7 +172,10 @@ async function api(path, body){
 // 정책 코드 — gate.py policy()·policy_v2()를 그대로 옮겨 보여 준다. rule 문자열로 어느 줄이 걸렸는지 고른다.
 const isV2up = v => v && v.policy !== "v1";
 const isV3 = v => v && /^v3/.test(v.policy || "");
+const isDown = v => v && v.gate_down;
 const POLICY_LINES = [
+  {rule:"gate unreachable: known read-only tool", show:isDown, code:"if judge_down and tool in READ_ONLY_TABLE:  # 판정 서버 응답 없음", out:"PASS"},
+  {rule:"gate unreachable: held (fail closed)",   show:isDown, code:"if judge_down:  # 모르면 막는다(fail closed) → 보류", out:"CONFIRM"},
   {rule:"known read-only tool",  show:isV2up, code:"if tool in READ_ONLY_TABLE:  # 도구 효과표(코드)",       out:"PASS"},
   {rule:"risky & injected>=0.8", code:"if risky and injected >= 0.8:",                                  out:"BLOCK"},
   {rule:"risky & match<=0.2",    code:"if risky and match <= 0.2:",                                     out:"BLOCK"},
@@ -215,14 +218,24 @@ function apply(ev){
 
 // ---------- 그리기 ----------
 function short(o){ try { return JSON.stringify(o); } catch { return String(o); } }
+const BRAND_SUB = "Zoro-1이 일하고, 같은 Zoro-1이 호출마다 검문한다";
+function workerName(st){
+  if (!st.worker) return "Zoro-1";
+  const parts = String(st.worker).split("/");
+  const model = parts[parts.length - 1].replace(/:free$/, "");
+  return parts.length > 1 ? `${parts[0]} · ${model}` : model;
+}
 function renderLeft(){
   const st = S.start || {};
+  const mcp = st.via === "mcp";
+  $("#worker-h").textContent = `일꾼 ${workerName(st)}${mcp ? " (MCP로 문지기에 연결)" : ""} — 사용자 요청과 도구 호출`;
+  $("#brand-sub").textContent = mcp ? "다른 에이전트가 일하고, Zoro-1 문지기가 MCP로 호출마다 검문한다" : BRAND_SUB;
   const task = $("#task");
   task.hidden = false;
   task.innerHTML = `<div class="who">사용자가 시킨 일 · ${esc(st.title || st.scene || "")}</div>
     <div class="q">「${esc(st.task || "")}」</div>
     <div class="meta">
-      <span class="chip">정책 ${esc(st.policy || "")} <span class="mono">${esc(st.policy_version || "")}</span></span>
+      ${st.policy ? `<span class="chip">정책 ${esc(st.policy)} <span class="mono">${esc(st.policy_version || "")}</span></span>` : ""}
       ${st.rules && st.rules.length ? `<span class="chip" style="color:var(--confirm)">회사 규칙 켬: ${esc(st.rules.join(", "))}</span>` : ""}
       ${st.worker_prompt ? `<span class="chip">일꾼 프롬프트 ${esc(st.worker_prompt)}</span>` : ""}
       <span class="chip">${S.live ? "라이브" : (st.replay ? "기록 재생" : "저장된 판 재생")}</span>
@@ -236,7 +249,7 @@ function renderLeft(){
     const dec = !c.v ? "WAIT" : c.v.decision;
     const decTxt = !c.v ? (c.result ? "기록 없음" : "검문 중") : (dec === "REASON" && !c.final ? "추론 중" : dec);
     let res = "";
-    if (c.confirm) res += `<span class="pill ${c.confirm.approve ? "PASS" : "BLOCK"}">${c.confirm.approve ? "사람 허락" : (c.confirm.by === "timeout" ? "시간 초과 → 거절" : "사람 거절")}</span> `;
+    if (c.confirm) res += `<span class="pill ${c.confirm.approve ? "PASS" : (isHeld(c.confirm) ? "CONFIRM" : "BLOCK")}">${confirmKo(c.confirm)}</span> `;
     const rp = c.result && c.result.replay;
     if (rp) res += `<span style="color:var(--muted)">${esc(rp)}</span>`;
     else if (c.executed === true) res += `<span style="color:var(--pass)">실행됨</span>`;
@@ -256,8 +269,16 @@ function renderLeft(){
   $("#stream").querySelectorAll(".call").forEach(b => b.onclick = () => { S.sel = b.dataset.id; S.manual = true; render(); });
   const sel = $("#stream .call.sel"); if (sel && !S.manual) sel.scrollIntoView({block:"nearest"});
 }
+function isHeld(cf){ return /^mcp/.test(cf.by || "") || /^mcp:/.test(cf.note || ""); }
+function confirmKo(cf){
+  if (cf.approve) return "사람 허락";
+  if (isHeld(cf)) return /no human/.test(cf.note || "") ? "보류됨 — 붙은 사람 없음" : "보류됨";
+  return cf.by === "timeout" ? "시간 초과 → 거절" : "사람 거절";
+}
 function endKo(r){
   if (!r) return "";
+  const m = /^mcp session ended(?: · (\d+) call\(s\) refused)?/.exec(r);
+  if (m) return "MCP 세션 끝" + (m[1] ? ` · 막히거나 보류된 호출 ${m[1]}건` : "");
   if (r === "answered") return "일꾼이 일을 마침";
   if (r.startsWith("halted: declined")) return "사람이 거절 → 판 정지";
   if (r.startsWith("halted: blocked")) return "문지기 차단 → 판 정지 " + r.slice(15);
@@ -270,6 +291,13 @@ function bar(room, p, ghost, ticks){
   const tk = ticks.map(x => `<span class="tk" style="left:${x*100}%"><i>${x}</i></span>`).join("");
   const g = ghost != null ? `<span class="ghost" style="left:calc(${ghost*100}% - 1px)" title="직답 ${ghost.toFixed(2)}"></span>` : "";
   return `<div class="bar"><span class="fill" style="width:${Math.max(0, Math.min(1, p))*100}%"></span>${g}${tk}</div>`;
+}
+function confirmWhy(v){
+  const r = (v && v.rule) || "";
+  if (/^company rule/.test(r)) return "회사 규칙(금융·개인정보 사외 금지)에 걸렸습니다";
+  if (/^gate unreachable/.test(r)) return "판정 서버가 응답하지 않습니다";
+  if (/cut\/timeout/.test(r)) return "추론이 끝까지 오지 않았고 되돌릴 수 없는 일입니다";
+  return "되돌릴 수 없는 일인데 확신이 없습니다";
 }
 function renderCard(){
   const c = S.calls.get(S.sel);
@@ -287,7 +315,7 @@ function renderCard(){
   if (ms.direct != null) tim.push(`직답 검문 <b>${(ms.direct/1000).toFixed(2)}초</b>`);
   if (thinking && S.reasonT[c.id]) tim.push(`추론 <b class="thinking" id="rt">${((performance.now()-S.reasonT[c.id])/1000).toFixed(1)}초…</b>`);
   if (ms.reasoned != null) tim.push(`추론 <b>${(ms.reasoned/1000).toFixed(1)}초</b>` + (v.reasoning_tokens ? ` · ${v.reasoning_tokens}토큰` : "") + (v.cut ? ` · <span style="color:var(--block)">잘림</span>` : ""));
-  if (v && v.stage) tim.push(`단계 <b>${{direct:"직답", reasoned:"추론 뒤", human:"사람"}[v.stage] || esc(v.stage)}</b>`);
+  if (v && v.stage) tim.push(`단계 <b>${{direct:"직답", reasoned:"추론 뒤", human:"사람", failsafe:"판정 서버 없음"}[v.stage] || esc(v.stage)}</b>`);
   if (v && v.rule) tim.push(`걸린 규칙 <b>${esc(v.rule)}</b>`);
   if (v && v.policy) tim.push(`정책 <b>${esc(v.policy)}</b>`);
   const rooms = [];
@@ -315,6 +343,7 @@ function renderCard(){
         <div class="val">${r.p.toFixed(2)}</div></div>`);
     }
   }
+  if (!p && v && v.gate_down) rooms.push(`<div class="na">판정 서버가 응답하지 않습니다 — 확률 없이 코드가 정합니다. 아는 읽기 도구만 통과, 나머지는 막고 보류(fail closed)</div>`);
   const waitingHere = S.live && S.waiting === c.id;
   let ln = 0;
   const policyRows = POLICY_LINES.filter(l => !l.show || l.show(v)).map(l => {
@@ -332,7 +361,7 @@ function renderCard(){
     </div>
     <div class="timing">${tim.join("")}</div>
     <div class="confirm${waitingHere ? " on" : ""}" id="confirmbox">
-      <span class="msg">되돌릴 수 없는 일인데 확신이 없습니다 — 사람이 정해 주세요 <span class="mono" id="cd"></span></span>
+      <span class="msg">${esc(confirmWhy(v))} — 사람이 정해 주세요 <span class="mono" id="cd"></span></span>
       <button class="yes" id="yes">허락 (Y)</button><button class="no" id="no">거절 (N)</button>
     </div>
     <div class="rooms">${rooms.join("")}</div>
@@ -445,8 +474,8 @@ async function health(){
 $("#replay").onchange = e => { if (e.target.value) startReplay(e.target.value); };
 $("#skip").onclick = () => { if (S && !S.live) S.skip = true; };
 document.addEventListener("keydown", e => {
-  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (/^[1-9]$/.test(e.key)){ const b = document.querySelectorAll(".scene")[+e.key - 1]; if (b) b.click(); }
+  if (e.target.tagName === "SELECT" || (e.target.tagName === "INPUT" && e.target.type !== "checkbox") || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (/^[1-9]$/.test(e.key)){ const b = document.querySelectorAll("#scenes .scene")[+e.key - 1]; if (b) b.click(); }
   if (e.key === "y" || e.key === "Y") answer(true);
   if (e.key === "n" || e.key === "N") answer(false);
   if (e.key === "e" || e.key === "E") $("#skip").click();
