@@ -43,6 +43,11 @@ PENDING: dict[str, tuple[float, dict, dict]] = {}   # reason_id → (만든 시�
 PENDING_TTL = 600
 LOCK = threading.Lock()
 CFG = {"upstream": "http://127.0.0.1:30001", "log": HERE / "logs" / "gate.jsonl", "web": HERE / "web"}
+# 공개 서버 보호(11-19 6c 부탁) — 판정 결과·정책 해시와 무관한 입구 검사뿐이다
+MAX_BODY = 64 * 1024          # 요청 본문 상한 → 413
+MAX_LIVE_RUNS = 2             # 동시에 도는 라이브 일꾼 판 → 429
+MAX_TASK = 500                # task·user_request 글자 상한 → 400
+MAX_SOURCE = 20_000           # source_text 글자 상한 → 400 (판정 state에는 어차피 앞 4,000자만 들어간다)
 
 
 def _log(kind: str, call: dict, verdict: dict) -> None:
@@ -73,6 +78,11 @@ def _validate(call: dict) -> str | None:
         return "call must be an object"
     if not call.get("user_request"):
         return "user_request is required"
+    if not isinstance(call["user_request"], str) or len(call["user_request"]) > MAX_TASK:
+        return f"user_request must be a string of at most {MAX_TASK} chars"
+    src = call.get("source_text")
+    if src is not None and (not isinstance(src, str) or len(src) > MAX_SOURCE):
+        return f"source_text must be a string of at most {MAX_SOURCE} chars"
     tc = call.get("tool_call")
     if not isinstance(tc, dict) or not tc.get("name"):
         return "tool_call.name is required"
@@ -107,6 +117,13 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?")[0].rstrip("/")
+        try:
+            n = int(self.headers.get("content-length") or 0)
+        except ValueError:
+            return self._send(400, {"error": "bad content-length"})
+        if n > MAX_BODY:
+            self.close_connection = True
+            return self._send(413, {"error": f"request body over {MAX_BODY} bytes"})
         try:
             body = self._body()
         except Exception as e:
@@ -150,6 +167,13 @@ class H(BaseHTTPRequestHandler):
                 scenes = json.loads(worker.SCENES.read_text(encoding="utf-8"))
                 if scene not in scenes:
                     return self._send(400, {"error": f"unknown scene: {scene}", "scenes": list(scenes)})
+                task = body.get("task")
+                if task is not None and (not isinstance(task, str) or len(task) > MAX_TASK):
+                    return self._send(400, {"error": f"task must be a string of at most {MAX_TASK} chars"})
+                with LOCK:
+                    live = sum(1 for x in RUNS.values() if not x.done)
+                if live >= MAX_LIVE_RUNS:
+                    return self._send(429, {"error": f"{live} live runs already running (max {MAX_LIVE_RUNS}) — try again shortly"})
                 r = worker.Run(scene, CFG["upstream"], body.get("worker_prompt", "plain"), bool(body.get("think")),
                                body.get("task") or None, rules=_rules(body), policy=body.get("policy") or None)
                 with LOCK:
