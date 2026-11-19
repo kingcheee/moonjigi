@@ -140,7 +140,7 @@ const secs = ms => (ms / 1000).toFixed(ms < 995 ? 2 : 1) + "초";
 
 // ───────────── 5. 「비서가 하려던 일」 실물 ─────────────
 // 결정 띠 — 실물 아래에 찍힌다. live이면 사람 확인 단추가 붙는다.
-function rulingHTML(c, S, live){
+function rulingHTML(c, S, live, tryMode){
   const o = outcome(c, S), v = c.v, vb = verbOf(c);
   const ms = (v && v.ms) || {};
   const thought = ms.reasoned != null ? `<p class="sub">문지기가 바로 정하지 못해 ${secs(ms.reasoned)} 더 따져 봤습니다.</p>` : "";
@@ -159,13 +159,13 @@ function rulingHTML(c, S, live){
       h = `문지기가 멈췄습니다. ${vb.obj} ${vb.do}도 될까요?`;
       act = live ? `<button type="button" class="b" data-answer="no">${vb.do}지 않기 <kbd>N</kbd></button>
         <button type="button" class="b" data-answer="yes">${vb.do}기 <kbd>Y</kbd></button>
-        <span class="sub mono" data-countdown></span>` : "";
+        <span class="left" data-countdown></span>` : "";
       break;
     case "approved": h = `사람이 허락했습니다`; sub = `문지기가 멈추고 물었고, 허락을 받아 실행했습니다.`; break;
     case "declined": h = `문지기가 멈췄고, 사람이 거절했습니다`; sub = `실행되지 않았습니다.`; break;
     case "expired":  h = `문지기가 멈췄고, 답이 없어 실행하지 않았습니다`; break;
     case "held":     h = `문지기가 멈췄습니다`; sub = `이 에이전트에는 허락해 줄 사람이 붙어 있지 않아, 실행하지 않고 붙잡아 두었습니다.`; break;
-    case "unanswered": h = `문지기가 멈추고 사람에게 묻습니다`; sub = `이 기록에는 답해 줄 사람이 없어 실행되지 않았습니다.`; break;
+    case "unanswered": h = `문지기가 멈추고 사람에게 묻습니다`; sub = tryMode ? `실제 비서였다면 여기서 사람의 허락을 기다립니다.` : `이 기록에는 답해 줄 사람이 없어 실행되지 않았습니다.`; break;
     default:         h = esc(o.word);
   }
   return `<div class="ruling ${o.tone}"><p class="h">${h}</p>${why}${sub ? `<p class="sub">${sub}</p>` : ""}${thought}

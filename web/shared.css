@@ -36,7 +36,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 [hidden]{display:none!important}
-.mono,code,pre,kbd{font-variant-ligatures:none}
+.mono,code,pre,kbd,.code,.cmd{font-variant-ligatures:none}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .t-pass{color:var(--pass)} .t-ask{color:var(--ask)} .t-block{color:var(--block)} .t-muted{color:var(--muted)}
 kbd{font:500 11.5px/1 var(--mono);color:var(--muted);border:var(--rule) solid var(--line-2);border-radius:4px;padding:2px 5px;background:var(--bg)}
@@ -141,6 +141,7 @@ body.app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .ruling .sub{margin:2px 0 0;font-size:var(--fs-s);color:var(--ink-2)}
 .ruling .act{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);margin-top:var(--s3)}
 .ruling .act .grow{flex:1}
+.ruling .act .left{font-size:var(--fs-s);color:var(--ink-2);font-variant-numeric:tabular-nums}
 .ruling .b{min-height:44px}
 
 /* 끝난 뒤 */
@@ -216,6 +217,30 @@ button.item:hover{background:var(--bg)}
 .inside details{margin-top:var(--s3);font-size:var(--fs-s)}
 .inside summary{cursor:pointer;color:var(--ink-2)}
 .inside pre{margin:var(--s1) 0 0;padding:var(--s2);background:var(--surface);border-radius:var(--radius);font:12px/1.55 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;max-height:260px;overflow:auto}
+
+/* ── 직접 넣어 보기: 넣는 칸 ──────────────────────────── */
+.inp{display:block;width:100%;border:var(--rule) solid var(--line-2);border-radius:var(--radius);background:var(--bg);padding:var(--s2) var(--s3);font-size:var(--fs-m);line-height:1.5}
+textarea.inp{resize:vertical;min-height:120px}
+.inp.big{font-size:20px;font-weight:700;min-height:48px}
+.lab2{display:block;margin:0 0 var(--s1);font-size:var(--fs-xs);color:var(--muted)}
+.world .pad{padding:0 var(--s4)}
+.world .pad .inp{font-size:var(--fs-s)}
+.world .pad details{margin-top:var(--s3);font-size:var(--fs-s);color:var(--ink-2)}
+.world .pad summary{cursor:pointer}
+.hint{margin:var(--s1) 0 0;font-size:var(--fs-xs);color:var(--muted)}
+.presets{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s3)}
+.presets .b{min-height:36px;font-size:var(--fs-s);font-weight:500;padding:0 var(--s3)}
+.presets .b b{font-weight:700;margin-right:6px}
+.thing-h select{font-size:var(--fs-s);font-weight:600;color:var(--ink);border:var(--rule) solid var(--line-2);border-radius:4px;background:var(--bg);padding:3px 6px;margin-left:var(--s2)}
+.mailhead input[type=text]{width:100%;border:0;border-bottom:var(--rule) solid var(--line);background:none;padding:3px 0;font-size:15px}
+.mailhead input[type=text]:focus,.mailbody textarea:focus{outline:0;border-color:var(--focus)}
+.mailhead input[type=checkbox]{width:18px;height:18px;margin:4px 0}
+.mailhead label{color:var(--muted)}
+.mailbody textarea{display:block;width:100%;min-height:150px;border:var(--rule) solid transparent;background:none;resize:vertical;padding:0;font-size:var(--fs-m);line-height:1.6}
+.askrow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);margin-top:var(--s4)}
+.askrow .b{min-height:48px;padding:0 var(--s5)}
+.thread details.raw{margin-top:var(--s5);font-size:var(--fs-s);color:var(--ink-2)}
+.thread details.raw pre{margin:var(--s1) 0 0;padding:var(--s2);background:var(--surface);border-radius:var(--radius);font:12px/1.55 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
 
 /* ── 좁은 화면(휴대폰): 한 줄로 쌓고, 시키는 곳은 아래에 붙인다 ───── */
 @media (max-width:900px){
