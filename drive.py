@@ -42,13 +42,20 @@ def main() -> int:
     ap.add_argument("--worker-prompt", default="plain", choices=["plain", "compliant"])
     ap.add_argument("--confirm", default="deny", choices=["deny", "approve", "ask"])
     ap.add_argument("--replay")
+    ap.add_argument("--policy", default=None, help="v1·v2·v3·v3b·v3c — 없으면 게이트 서버 기본값")
+    ap.add_argument("--rules", nargs="*", default=None, help="회사 규칙 스위치(예: --rules pii)")
     ap.add_argument("--runs", action="store_true")
     a = ap.parse_args()
     if a.runs:
         for r in req(a.base, "/worker/runs"):
             print(f"{r['run_id']:32} {str(r['scene']):14} {r['worker_prompt'] or '':9} {str(r['end']):40} {r['decisions']}")
         return 0
-    rid = a.replay or req(a.base, "/worker/run", {"scene": a.scene, "worker_prompt": a.worker_prompt})["run_id"]
+    body = {"scene": a.scene, "worker_prompt": a.worker_prompt}
+    if a.policy:
+        body["policy"] = a.policy
+    if a.rules:
+        body["rules"] = a.rules
+    rid = a.replay or req(a.base, "/worker/run", body)["run_id"]
     print("run", rid)
     seen, answered = 0, set()
     while True:

@@ -59,6 +59,15 @@ def _gc() -> None:
             PENDING.pop(k, None)
 
 
+def _rules(body: dict) -> list | None:
+    """요청의 "rules": ["pii"] — 모르는 규칙 이름은 버린다. 없으면 None(지금과 동일)."""
+    r = body.get("rules")
+    if not isinstance(r, list):
+        return None
+    r = [x for x in r if isinstance(x, str) and x in gate.RULES]
+    return r or None
+
+
 def _validate(call: dict) -> str | None:
     if not isinstance(call, dict):
         return "call must be an object"
@@ -107,7 +116,7 @@ class H(BaseHTTPRequestHandler):
                 call = body.get("call", body)
                 if err := _validate(call):
                     return self._send(400, {"error": err})
-                v = gate.check_direct(CFG["upstream"], call)
+                v = gate.check_direct(CFG["upstream"], call, body.get("policy") or None, _rules(body))
                 v["ms"]["total"] = v["ms"]["direct"]
                 if v["needs_reason"]:
                     _gc()
@@ -132,7 +141,8 @@ class H(BaseHTTPRequestHandler):
                 call = body.get("call", body)
                 if err := _validate(call):
                     return self._send(400, {"error": err})
-                v = gate.check(CFG["upstream"], call, escalate=not body.get("direct_only"))
+                v = gate.check(CFG["upstream"], call, escalate=not body.get("direct_only"), pv=body.get("policy") or None,
+                               rules=_rules(body))
                 _log("ladder", call, v)
                 return self._send(200, v)
             if path == "/worker/run":
@@ -141,7 +151,7 @@ class H(BaseHTTPRequestHandler):
                 if scene not in scenes:
                     return self._send(400, {"error": f"unknown scene: {scene}", "scenes": list(scenes)})
                 r = worker.Run(scene, CFG["upstream"], body.get("worker_prompt", "plain"), bool(body.get("think")),
-                               body.get("task") or None)
+                               body.get("task") or None, rules=_rules(body), policy=body.get("policy") or None)
                 with LOCK:
                     RUNS[r.id] = r
                 threading.Thread(target=r.run, daemon=True).start()
@@ -168,7 +178,9 @@ class H(BaseHTTPRequestHandler):
                 ok = True
             except Exception as e:
                 up, ok = str(e), False
-            return self._send(200, {"ok": ok, "policy": gate.ACTIVE, "policy_version": gate.active_version(), "policy_versions": gate.POLICY_VERSIONS, "upstream": CFG["upstream"],
+            return self._send(200, {"ok": ok, "policy": gate.ACTIVE, "policy_version": gate.active_version(), "policy_versions": gate.POLICY_VERSIONS,
+                                    "rules": {k: {"text": r["text"], "threshold": r["threshold"], "effect": r["effect"]} for k, r in gate.RULES.items()},
+                                    "rules_version": gate.RULES_VERSION, "upstream": CFG["upstream"],
                                     "models": up, "pending": len(PENDING)})
         if path == "/log":
             n = 50

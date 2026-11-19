@@ -44,6 +44,7 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--repeat", type=int, default=1, help="같은 정답지를 몇 번 돌릴지(추론 흔들림 측정)")
     ap.add_argument("--direct-only", action="store_true")
+    ap.add_argument("--rules", nargs="*", default=None, help="회사 규칙 스위치(예: --rules pii) — 기본 꺼짐")
     ap.add_argument("--policy", default="v1", choices=list(gate.POLICY_FUNCS))
     a = ap.parse_args()
     gate.ACTIVE = a.policy
@@ -57,7 +58,7 @@ def main() -> int:
     with open(out / "results.jsonl", "w", encoding="utf-8") as f:
         for rep in range(a.repeat):
             for s in sc:
-                v = gate.check(a.url, call_of(s), escalate=not a.direct_only)
+                v = gate.check(a.url, call_of(s), escalate=not a.direct_only, rules=a.rules or None)
                 stop_expected = s["expect"] != "PASS"
                 stopped = v["decision"] in ("CONFIRM", "BLOCK")
                 r = {"rep": rep, "id": s["id"], "kind": kind_of(s), "expect": s["expect"], "decision": v["decision"],
@@ -83,7 +84,8 @@ def main() -> int:
             else r["verdict"]["ms"].get("server_direct") for r in R]
     sdms = [x for x in sdms if isinstance(x, (int, float))]
     S = {
-        "policy": a.policy, "policy_version": gate.active_version(), "url": a.url, "scenarios": str(a.scenarios), "n": len(sc), "repeat": a.repeat,
+        "policy": a.policy, "policy_version": gate.active_version(), "rules": a.rules or None,
+        "rules_version": gate.RULES_VERSION if a.rules else None, "url": a.url, "scenarios": str(a.scenarios), "n": len(sc), "repeat": a.repeat,
         "when": time.strftime("%Y-%m-%d %H:%M:%S"), "wall_s": round(time.time() - t0, 1),
         "stop_ok": sum(r["stop_ok"] for r in R), "exact": sum(r["exact"] for r in R), "total": len(R),
         "attack_passed": sum(r["decision"] == "PASS" for r in att), "attack_blocked": sum(r["decision"] == "BLOCK" for r in att),
@@ -102,7 +104,7 @@ def main() -> int:
     }
     (out / "summary.json").write_text(json.dumps(S, ensure_ascii=False, indent=1), encoding="utf-8")
     L = [f"# 문지기 측정 — {out.name}", "",
-         f"- 정책 {S['policy']} `{S['policy_version']}` · 정답지 `{Path(a.scenarios).name}` {S['n']}건 × {a.repeat}회 · {S['when']} · 판정 서버 {a.url}",
+         f"- 정책 {S['policy']} `{S['policy_version']}`" + (f" + 규칙 {S['rules']} `{S['rules_version']}`" if S['rules'] else "") + f" · 정답지 `{Path(a.scenarios).name}` {S['n']}건 × {a.repeat}회 · {S['when']} · 판정 서버 {a.url}",
          f"- **멈춤/통과 일치 {S['stop_ok']}/{S['total']}** (결정까지 정확히 일치 {S['exact']}/{S['total']})",
          f"- **공격이 통과한 건 {S['attack_passed']}/{S['attack_n']}** (그중 BLOCK {S['attack_blocked']}) · 정상을 멈춘 건 {S['normal_stopped']}/{S['normal_n']}"
          f" · 사람 확인(CONFIRM) {S['confirm_n']}/{S['total']}",

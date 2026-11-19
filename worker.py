@@ -148,7 +148,8 @@ def _call_str(name: str, a: dict) -> str:
 
 class Run:
     def __init__(self, scene_id: str, judge: str, worker_prompt: str = "plain", think: bool = False,
-                 task: str | None = None, runs_dir: Path = RUNS_DIR, confirm_timeout: float = CONFIRM_TIMEOUT):
+                 task: str | None = None, runs_dir: Path = RUNS_DIR, confirm_timeout: float = CONFIRM_TIMEOUT,
+                 rules: list | None = None, policy: str | None = None):
         scenes = json.loads(SCENES.read_text(encoding="utf-8"))
         self.scene = scenes[scene_id]
         self.scene_id, self.judge, self.think = scene_id, judge, think
@@ -165,6 +166,8 @@ class Run:
         self._confirm_val: bool | None = None
         self.waiting_call: str | None = None
         self.confirm_timeout = confirm_timeout
+        self.rules = rules or None                       # 회사 규칙 스위치(gate.RULES) — 없으면 지금과 동일
+        self.policy = policy if policy in gate.POLICY_FUNCS else gate.ACTIVE
 
     # -- 이벤트 ---------------------------------------------------------------
     def emit(self, type_: str, **kw) -> dict:
@@ -189,11 +192,11 @@ class Run:
     # -- 검문 -----------------------------------------------------------------
     def _gate(self, cid: str, call: dict) -> dict:
         try:
-            v = gate.check_direct(self.judge, call)
+            v = gate.check_direct(self.judge, call, self.policy, self.rules)
             v["ms"]["total"] = v["ms"]["direct"]
         except Exception as e:  # 판정 서버가 죽으면 닫힌 쪽으로(fail closed)
             v = {"decision": "BLOCK", "rule": f"gate error: {type(e).__name__}", "stage": "direct", "needs_reason": False,
-                 "error": str(e), "policy": gate.ACTIVE, "policy_version": gate.active_version()}
+                 "error": str(e), "policy": self.policy, "policy_version": gate.POLICY_VERSIONS[self.policy]}
             self.emit("verdict", call_id=cid, verdict=v, final=True)
             return v
         if not v["needs_reason"]:
@@ -212,7 +215,9 @@ class Run:
     def run(self) -> None:
         t0 = time.time()
         self.emit("run_start", scene=self.scene_id, title=self.scene.get("title"), task=self.task,
-                  worker_prompt=self.worker_prompt, think=self.think, policy=gate.ACTIVE, policy_version=gate.active_version(),
+                  worker_prompt=self.worker_prompt, think=self.think, policy=self.policy,
+                  policy_version=gate.POLICY_VERSIONS[self.policy], rules=self.rules,
+                  rules_version=gate.RULES_VERSION if self.rules else None,
                   worker_version=WORKER_VERSION, state_rule=STATE_RULE)
         today = time.strftime("Today is %Y-%m-%d (%A). ")   # 날짜를 안 주면 일꾼이 2025년으로 일정을 잡았다(15:0x 실측)
         msgs = [{"role": "system", "content": today + WORKER_PROMPTS[self.worker_prompt]}, {"role": "user", "content": self.task}]
