@@ -9,7 +9,8 @@
    5. 「비서가 하려던 일」 실물   thingHTML()                  — 메일 초안 · 지우려던 목록
    6. 「문지기가 본 것」         insideHTML()                 — 질문 넷의 확률 · 걸린 정책 줄 · 걸린 시간
 
-   문구를 고치려면 TOOLS · HEAD · whyWords()를 고친다. 숫자와 결정은 전부 서버 응답·저장된 판에서 온다. */
+   문구를 고치려면 TOOLS · outcome() · whyParts() · rulingHTML()을 고친다. 숫자와 결정은 전부 서버 응답·저장된 판에서 온다.
+   화면 문구는 명사로 끝낸다(「차단 · 시킨 일 밖」) — 「~입니다 · ~함 · ~임」을 붙이지 않는다. */
 
 const BASE = "";                                   // 게이트 서버(server.py)가 이 파일을 내준다
 const $ = (s, el = document) => el.querySelector(s);
@@ -19,7 +20,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function api(path, body){
   let r;
   try { r = await fetch(BASE + path, body === undefined ? {} : {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)}); }
-  catch (e) { const err = new Error("서버에 연결하지 못했습니다"); err.status = 0; throw err; }
+  catch (e) { const err = new Error("서버 연결 실패"); err.status = 0; throw err; }
   let d = null;
   try { d = await r.json(); } catch (e) {}
   if (!r.ok){ const err = new Error((d && d.error) || ("HTTP " + r.status)); err.status = r.status; throw err; }
@@ -95,80 +96,81 @@ function isHeld(cf){ return /^mcp/.test(cf.by || "") || /^mcp:/.test(cf.note || 
 function outcome(c, S){
   const v = c.v;
   if (!v){
-    if (c.result) return {key:"none", word:"판정 기록 없음", tone:"muted"};      // 옛 기록: 부작용 없는 호출은 검문하지 않았다
-    return {key:"checking", word:"확인하는 중", tone:"muted"};
+    if (c.result) return {key:"none", word:"판정 제외", tone:"muted"};          // 옛 기록: 부작용 없는 호출은 검문하지 않았다
+    return {key:"checking", word:"확인 중", tone:"muted"};
   }
   if (v.decision === "REASON" && !c.final) return {key:"thinking", word:"더 따져 보는 중", tone:"ask"};
   if (v.decision === "PASS") return {key:"pass", word:"통과", tone:"pass"};
-  if (v.decision === "BLOCK") return {key:"block", word:"막음", tone:"block"};
+  if (v.decision === "BLOCK") return {key:"block", word:"차단", tone:"block"};
   if (v.decision === "CONFIRM"){
     const cf = c.confirm;
     if (cf){
-      if (cf.approve) return {key:"approved", word:"사람이 허락", tone:"pass"};
+      if (cf.approve) return {key:"approved", word:"사람 허락", tone:"pass"};
       if (isHeld(cf)) return {key:"held", word:"보류", tone:"ask"};
-      if (cf.by === "timeout") return {key:"expired", word:"답이 없어 멈춤", tone:"ask"};
-      return {key:"declined", word:"사람이 거절", tone:"ask"};
+      if (cf.by === "timeout") return {key:"expired", word:"시간 초과", tone:"ask"};
+      return {key:"declined", word:"사람 거절", tone:"ask"};
     }
-    if (S && S.waiting === c.id) return {key:"asking", word:"사람에게 묻는 중", tone:"ask"};
-    return {key:"unanswered", word:"사람에게 물음", tone:"ask"};
+    if (S && S.waiting === c.id) return {key:"asking", word:"사람 확인 중", tone:"ask"};
+    return {key:"unanswered", word:"사람 확인", tone:"ask"};
   }
   return {key:"other", word:String(v.decision || ""), tone:"muted"};
 }
-// 걸린 정책 줄(verdict.rule) → 사용자 쪽에서 본 이유 한 줄
-function whyWords(v){
+// 걸린 정책 줄(verdict.rule) → 사용자 쪽에서 본 이유. [짧은 말, 덧붙일 말] — 짧은 말은 결정 낱말 옆에 붙는다(「차단 · 시킨 일 밖」)
+function whyParts(v){
   const r = (v && v.rule) || "";
   if (/^company rule/.test(r)){
     const hit = (v.rules || []).find(x => x.hit);
-    return "회사 규칙에 걸렸습니다 — 「" + (hit ? hit.text : "회사 규칙") + "」";
+    return ["회사 규칙", "「" + (hit ? hit.text : "회사 규칙") + "」"];
   }
-  if (r === "risky & match<=0.2") return "시킨 일의 범위 밖입니다.";
-  if (r === "risky & injected>=0.8") return "사용자가 시킨 일이 아니라, 읽은 글 속 지시에서 나온 일로 보입니다.";
-  if (/^gate unreachable: held/.test(r)) return "문지기(판정 서버)가 응답하지 않습니다. 읽기가 아닌 일은 실행하지 않고 붙잡아 둡니다.";
-  if (/^gate unreachable: known/.test(r)) return "문지기가 응답하지 않지만, 읽기만 하는 일이라 그대로 실행했습니다.";
-  if (/^gate error/.test(r)) return "판정 서버에 닿지 못했습니다. 모르면 막습니다.";
-  if (/cut\/timeout/.test(r)) return "더 따져 보는 일이 끝까지 오지 않았습니다. 되돌릴 수 없는 일이라 사람에게 묻습니다.";
-  if (r === "still unsure & risky" || /^risky & unsure/.test(r)) return "걸린 규칙은 없습니다. 되돌릴 수 없는 일은 확신이 없으면 사람에게 묻습니다.";
-  if (r === "still unsure & safe") return "확신은 없지만 밖으로 나가거나 지우는 일이 아닙니다.";
-  if (r === "known read-only tool" || r === "read & injected<0.5") return "읽기만 하는 일입니다.";
-  if (/^match>=0\.8/.test(r)) return "시킨 일이고, 읽은 글 속 지시에서 나온 일이 아닙니다.";
-  if (r === "no rule fired") return "바로 정하지 못했습니다.";
-  return r;
+  if (r === "risky & match<=0.2") return ["시킨 일 밖", ""];
+  if (r === "risky & injected>=0.8") return ["읽은 글 속 지시", "사용자가 시킨 일이 아니라 읽은 글에서 나온 일"];
+  if (/^gate unreachable: held/.test(r)) return ["문지기 무응답", "읽기가 아닌 일은 실행 대신 보류"];
+  if (/^gate unreachable: known/.test(r)) return ["문지기 무응답", "읽기만 하는 일이라 그대로 실행"];
+  if (/^gate error/.test(r)) return ["판정 서버 연결 실패", "모르면 차단"];
+  if (/cut\/timeout/.test(r)) return ["더 따져 보기 미완", "되돌릴 수 없는 일은 사람에게"];
+  if (r === "still unsure & risky" || /^risky & unsure/.test(r)) return ["확신 부족", "걸린 규칙은 없지만 되돌릴 수 없는 일"];
+  if (r === "still unsure & safe") return ["확신 부족", "내보내기·삭제가 아닌 일"];
+  if (r === "known read-only tool" || r === "read & injected<0.5") return ["읽기만 하는 일", ""];
+  if (/^match>=0\.8/.test(r)) return ["시킨 일", "읽은 글 속 지시와 무관"];
+  if (r === "no rule fired") return ["바로 정하지 못한 호출", ""];
+  return [r, ""];
 }
+function whyWords(v){ return whyParts(v).filter(Boolean).join(" · "); }        // 한 줄로 이은 것(「문지기가 본 것」· 콘솔이 쓴다)
 const DECISION_KO = {PASS:"통과", REASON:"더 따져 본다", CONFIRM:"사람 확인", BLOCK:"차단"};
-const STAGE_KO = {direct:"바로 답함", reasoned:"더 따져 본 뒤", human:"더 따져 본 뒤 사람에게", failsafe:"문지기 응답 없음"};
+const STAGE_KO = {direct:"바로 답", reasoned:"더 따져 본 뒤", human:"더 따져 본 뒤 사람 확인", failsafe:"문지기 무응답"};
 const secs = ms => (ms / 1000).toFixed(ms < 995 ? 2 : 1) + "초";
 
 // ───────────── 5. 「비서가 하려던 일」 실물 ─────────────
-// 결정 띠 — 실물 아래에 찍힌다. live이면 사람 확인 단추가 붙는다.
+// 결정 띠 — 실물 아래에 찍힌다. 첫 줄 = 결정 낱말 · 이유(「차단 · 시킨 일 밖」). live이면 사람 확인 단추가 붙는다.
+const ASK_Q = {send:"이 메일을 보낼까요?", share:"이것을 공유할까요?", delete:"이것을 지울까요?", other:"이 일을 실행할까요?"};
 function rulingHTML(c, S, live, tryMode){
   const o = outcome(c, S), v = c.v, vb = verbOf(c);
   const ms = (v && v.ms) || {};
-  const thought = ms.reasoned != null ? `<p class="sub">문지기가 바로 정하지 못해 ${secs(ms.reasoned)} 더 따져 봤습니다.</p>` : "";
   const peek = `<button type="button" class="linkish" data-peek="${esc(c.id)}">문지기가 본 것</button>`;
-  const why = v ? `<p class="why">${esc(whyWords(v))}</p>` : "";
-  let h = "", sub = "", act = "";
+  if (o.key === "checking") return `<div class="ruling"><p class="h pulse">문지기 확인 중…</p></div>`;
+  if (o.key === "none") return `<div class="ruling"><p class="sub">판정 기록이 없는 호출</p></div>`;
+  if (o.key === "thinking")
+    return `<div class="ruling ask"><p class="h">더 따져 보는 중 <span class="mono" data-timer="${esc(c.id)}"></span></p>
+      <p class="sub">바로 정하지 못해 Zoro-1이 생각을 적고 다시 답하는 중</p></div>`;
+  const [short, more] = whyParts(v);
+  const word = o.key === "pass" ? "통과" : o.key === "block" ? "차단" : o.key === "held" ? "보류" : "사람 확인";
+  const kind = kindOf(c), q = ASK_Q[kind === "send" ? (c.name === "send_email" ? "send" : "share") : kind === "delete" ? "delete" : "other"];
+  let sub = "", act = "";
   switch (o.key){
-    case "checking": return `<div class="ruling"><p class="h pulse">문지기가 확인하는 중…</p></div>`;
-    case "none":     return `<div class="ruling"><p class="sub">이 호출에는 문지기의 판정 기록이 없습니다.</p></div>`;
-    case "thinking":
-      return `<div class="ruling ask"><p class="h">문지기가 더 따져 보는 중입니다 <span class="mono" data-timer="${esc(c.id)}"></span></p>
-        <p class="sub">바로 정하지 못했습니다. Zoro-1이 생각을 적은 뒤 같은 질문에 다시 답합니다.</p></div>`;
-    case "pass":     h = `문지기가 통과시켰습니다`; break;
-    case "block":    h = `문지기가 막았습니다`; break;
     case "asking":
-      h = `문지기가 멈췄습니다. ${vb.obj} ${vb.do}도 될까요?`;
+      sub = q;
       act = live ? `<button type="button" class="b" data-answer="no">${vb.do}지 않기 <kbd>N</kbd></button>
         <button type="button" class="b" data-answer="yes">${vb.do}기 <kbd>Y</kbd></button>
         <span class="left" data-countdown></span>` : "";
       break;
-    case "approved": h = `사람이 허락했습니다`; sub = `문지기가 멈추고 물었고, 허락을 받아 실행했습니다.`; break;
-    case "declined": h = `문지기가 멈췄고, 사람이 거절했습니다`; sub = `실행되지 않았습니다.`; break;
-    case "expired":  h = `문지기가 멈췄고, 답이 없어 실행하지 않았습니다`; break;
-    case "held":     h = `문지기가 멈췄습니다`; sub = `이 에이전트에는 허락해 줄 사람이 붙어 있지 않아, 실행하지 않고 붙잡아 두었습니다.`; break;
-    case "unanswered": h = `문지기가 멈추고 사람에게 묻습니다`; sub = tryMode ? `실제 비서였다면 여기서 사람의 허락을 기다립니다.` : `이 기록에는 답해 줄 사람이 없어 실행되지 않았습니다.`; break;
-    default:         h = esc(o.word);
+    case "approved":   sub = "사람 허락 · 실행 완료"; break;
+    case "declined":   sub = "사람 거절 · 실행 중단"; break;
+    case "expired":    sub = "시간 초과 · 실행 중단"; break;
+    case "held":       sub = "허락할 사람이 붙지 않은 에이전트"; break;
+    case "unanswered": sub = tryMode ? "실제라면 여기서 사람의 허락 대기" : "답할 사람이 없는 기록 · 실행 중단"; break;
   }
-  return `<div class="ruling ${o.tone}"><p class="h">${h}</p>${why}${sub ? `<p class="sub">${sub}</p>` : ""}${thought}
+  const thought = ms.reasoned != null ? `<p class="sub">${secs(ms.reasoned)} 더 따져 본 결과</p>` : "";
+  return `<div class="ruling ${o.tone}"><p class="h">${word}${short ? " · " + esc(short) : ""}</p>${more ? `<p class="why">${esc(more)}</p>` : ""}${sub ? `<p class="sub">${sub}</p>` : ""}${thought}
     <div class="act">${act}<span class="grow"></span>${peek}</div></div>`;
 }
 const THING_HEAD = {send:["비서가 보내려는 메일", "비서가 보내려던 메일", "비서가 보낸 메일"], del:["비서가 지우려는 것", "비서가 지우려던 것", "비서가 지운 것"],
@@ -199,11 +201,12 @@ function bulkThingHTML(calls, S, live){
   const blocked = count("block"), pending = os.filter(o => ["checking", "thinking"].includes(o.key)).length;
   const rules = [...new Set(calls.filter((c, i) => os[i].key === "block").map(c => c.v.rule))];
   let h, tone = "block";
-  if (blocked === n) h = `문지기가 ${n}건을 모두 막았습니다`;
-  else if (blocked && blocked + pending === n) h = `문지기가 지금까지 ${blocked}건을 막았습니다`;
-  else if (blocked) h = `문지기가 ${n}건 가운데 ${blocked}건을 막았습니다`;
-  else { h = pending ? "문지기가 확인하는 중…" : "문지기가 하나씩 확인했습니다"; tone = pending ? "" : "ask"; }
-  const why = rules.length === 1 ? `<p class="why">${esc(whyWords({rule:rules[0]}))}</p>` : (rules.length > 1 ? `<p class="why">이유는 줄마다 다릅니다. 줄을 누르면 문지기가 본 것이 열립니다.</p>` : "");
+  const one = rules.length === 1 ? " · " + esc(whyParts({rule:rules[0]})[0]) : "";
+  if (blocked === n) h = `차단 ${n}건${one}`;
+  else if (blocked && blocked + pending === n) h = `차단 ${blocked}건${one} <span class="pulse">· 확인 중…</span>`;
+  else if (blocked) h = `${n}건 가운데 차단 ${blocked}건${one}`;
+  else { h = pending ? "문지기 확인 중…" : "건마다 확인 완료"; tone = pending ? "" : "ask"; }
+  const why = rules.length > 1 ? `<p class="why">줄마다 다른 이유 · 줄을 누르면 문지기가 본 것</p>` : "";
   const last = calls[n - 1];
   return `<article class="thing"><p class="thing-h">비서가 지우려던 것 · ${n}건</p>
     <ol class="bulk">${rows}</ol>
@@ -248,7 +251,7 @@ function meter(p, ticks, ghost){
 function insideHTML(c, S){
   const v = c.v, st = (S && S.start) || {}, t = toolOf(c.name), o = outcome(c, S);
   const head = `<p class="callname">${esc(t.ko)}<code>${esc(c.name)}</code></p>`;
-  if (!v) return head + `<p class="dec t-muted">${c.result ? "이 호출에는 판정 기록이 없습니다. 옛 측정에서는 읽기만 하는 호출을 검문하지 않았습니다." : "문지기가 확인하는 중입니다."}</p>` + rawHTML(c);
+  if (!v) return head + `<p class="dec t-muted">${c.result ? "판정 기록이 없는 호출 · 옛 측정은 읽기 호출을 검문 대상에서 제외" : "문지기 확인 중"}</p>` + rawHTML(c);
   const p = v.reasoned || v.direct, d0 = v.reasoned ? v.direct : null;
   const tone = {PASS:"pass", CONFIRM:"ask", BLOCK:"block"}[v.decision] || "";
   const hitQ = c.final ? Q_OF_RULE[v.rule] : null;
@@ -259,24 +262,24 @@ function insideHTML(c, S){
       <span class="ko">${ko}<code>${key}</code></span><span class="val">${val(x, x0)}</span>${meter(x, ticks, x0)}</div>`);
     q("match", "시킨 일의 범위 안인가", p.match, d0 && d0.match, [0.2, 0.8]);
     if (p.injected_asked === false) qs.push(`<div class="q"><span class="ko">읽은 글 속 지시에서 나왔나<code>injected</code></span><span class="val t-muted">–</span>
-      <span class="na">묻지 않았습니다. 이때까지 읽은 외부 글이 없습니다.</span></div>`);
+      <span class="na">묻지 않은 질문 · 이때까지 읽은 외부 글 0건</span></div>`);
     else q("injected", "읽은 글 속 지시에서 나왔나", p.injected, d0 && d0.injected, [0.2, 0.5, 0.8]);
     q("undo", "되돌릴 수 있나", p.undo, d0 && d0.undo, [0.8]);
     const gp = p.grade_p || {};
-    const gsrc = p.grade_source === "code" ? "모델에 묻지 않았습니다. 도구 효과표(코드)가 아는 도구입니다."
+    const gsrc = p.grade_source === "code" ? "모델에 묻지 않고 도구 효과표(코드)로 결정"
       : ["read", "modify", "send", "delete"].filter(k => gp[k] != null).map(k => `${KIND_KO[k]} ${Number(gp[k]).toFixed(2)}`).join(" · ");
     qs.push(`<div class="q"><span class="ko">어떤 종류의 일인가<code>grade</code></span><span class="val" style="font-family:var(--sans)">${esc(KIND_KO[p.grade] || p.grade || "")}</span>
       <span class="na">${esc(gsrc)}</span></div>`);
     for (const r of (v.rules || [])){
       const h = r.hit && /^company rule/.test(v.rule || "");
       qs.push(`<div class="q${h ? " hit ask" : ""}"><span class="ko">회사 규칙을 어기나<code>rule_${esc(r.id)}</code></span><span class="val">${Number(r.p).toFixed(2)}</span>
-        ${meter(r.p, [r.threshold])}<span class="na">「${esc(r.text)}」 · ${r.threshold} 이상이면 멈춥니다. 통과시키는 데는 쓰지 않습니다.</span></div>`);
+        ${meter(r.p, [r.threshold])}<span class="na">「${esc(r.text)}」 · ${r.threshold} 이상이면 사람 확인 · 통과 근거로는 쓰지 않는 값</span></div>`);
     }
     if (Array.isArray(v.rules_on) && v.rules_on.length && !(v.rules || []).length)
       qs.push(`<div class="q"><span class="ko">회사 규칙을 어기나<code>rule_${esc(v.rules_on[0])}</code></span><span class="val t-muted">–</span>
-        <span class="na">묻지 않았습니다. 이 규칙은 밖으로 보내는 호출에만 묻습니다.</span></div>`);
+        <span class="na">묻지 않은 질문 · 밖으로 보내는 호출에만 묻는 규칙</span></div>`);
   }
-  const noProbs = !p ? `<p class="dec">판정 서버가 응답하지 않아 확률이 없습니다. 코드가 정했습니다 — 읽기 전용이라고 아는 도구만 실행하고, 나머지는 붙잡아 둡니다.</p>` : "";
+  const noProbs = !p ? `<p class="dec">판정 서버 무응답 · 확률 없이 코드가 결정. 읽기 전용으로 아는 도구만 실행하고 나머지는 보류</p>` : "";
   const lines = POLICY_LINES.filter(l => !l.show || l.show(v)).map(l => {
     const on = v.rule === l.rule || (l.alt && v.rule === l.alt);
     return `<div class="${on ? "on" : ""}"><span>${esc(l.code)}</span><span>${esc(l.out)}</span></div>`;
@@ -292,8 +295,8 @@ function insideHTML(c, S){
   if (st.worker || st.via) facts.push(["일꾼", esc(workerName(st)) + (st.via === "mcp" ? " · MCP로 연결" : "")]);
   const reasoning = v.reasoning ? `<details><summary>Zoro-1이 적은 생각 앞부분</summary><pre>${esc(v.reasoning)}</pre></details>` : "";
   return head + `<p class="dec">${esc(whyWords(v))}</p>
-    ${qs.length ? `<h3>Zoro-1에게 따로 물은 질문 — 서로의 답을 못 봅니다</h3>${qs.join("")}` : noProbs}
-    <h3>정책은 코드입니다 — 같은 확률이면 언제나 같은 결정</h3><div class="code">${lines}</div>
+    ${qs.length ? `<h3>Zoro-1에게 따로 물은 질문 · 서로의 답을 못 보는 구조</h3>${qs.join("")}` : noProbs}
+    <h3>정책은 코드 · 같은 확률이면 언제나 같은 결정</h3><div class="code">${lines}</div>
     <h3>기록</h3><dl class="facts">${facts.map(([k, x]) => `<dt>${k}</dt><dd>${x}</dd>`).join("")}</dl>
     ${reasoning}${rawHTML(c)}`;
 }

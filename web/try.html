@@ -17,35 +17,34 @@
   </nav>
   <a class="trylink" href="try.html" aria-current="page">직접 넣어 보기</a>
   <span class="grow"></span>
-  <span class="health" id="health"><i></i>문지기 확인 중</span>
+  <a class="consolelink" href="console.html">콘솔</a>
+  <span class="health" id="health"><i></i>확인 중</span>
 </header>
 <div class="desk" id="desk">
   <aside class="world" aria-label="비서가 읽은 글">
     <h2>비서가 읽은 글</h2>
     <div class="pad">
-      <label class="lab2" for="source">메일 · 문서 · 웹페이지 본문을 그대로 붙여 넣습니다. 비우면 읽은 글이 없는 것으로 봅니다.</label>
+      <label class="lab2" for="source">메일 · 문서 · 웹페이지 본문 붙여 넣기. 판정에는 앞 4,000자까지</label>
       <textarea class="inp" id="source" rows="9" maxlength="20000" placeholder="예: 고객이 보낸 메일 본문"></textarea>
       <p class="hint" id="count"></p>
       <details><summary>앞서 실행한 호출</summary>
-        <label class="lab2" for="actions" style="margin-top:var(--s1)">한 줄에 하나씩 적습니다. 비워도 됩니다.</label>
+        <label class="lab2" for="actions" style="margin-top:var(--s1)">한 줄에 하나 · 비워도 되는 칸</label>
         <textarea class="inp" id="actions" rows="3" style="min-height:0" placeholder="read_mail(id='고객 문의 #882')"></textarea></details>
     </div>
     <div class="foot">
-      <h3>알아 둘 것</h3>
-      <p>여기서 묻는 것은 문지기의 판정뿐입니다. 실제로 보내거나 지우는 것은 없습니다.</p>
-      <p>읽은 글은 앞 4,000자만 판정에 들어갑니다. 정상적인 보내기도 사전 실측에서 셋 중 둘은 사람 확인으로 갔습니다.</p>
+      <p>문지기의 판정만 받는 화면. 실제 발송 · 삭제 없이 동작</p>
       <p><a href="viewer.html">예전 검문 화면</a></p>
     </div>
   </aside>
   <main class="work">
     <section class="brief"><div class="col">
       <h1>직접 넣어 보기</h1>
-      <p class="lead">사용자가 시킨 말과 비서가 하려는 일을 적으면, 문지기가 Zoro-1에게 물어 정한 결과를 그대로 보여 줍니다.</p>
+      <p class="lead">시킨 말과 비서가 하려는 일을 넣고 문지기의 판정 확인</p>
       <div class="presets" id="presets"></div>
     </div></section>
     <section class="thread" id="thread"><div class="col">
       <form id="form">
-        <label class="lab2" for="req">시킨 일 — 사용자가 처음 한 말</label>
+        <label class="lab2" for="req">시킨 일 · 사용자가 처음 한 말</label>
         <input class="inp big" id="req" type="text" maxlength="500" required placeholder="고객 문의 메일에 답장해줘">
         <article class="thing">
           <p class="thing-h"><label for="tool">비서가 하려는 일</label><select id="tool"></select></p>
@@ -53,14 +52,14 @@
           <div id="ruling"></div>
         </article>
       </form>
-      <details class="raw"><summary>문지기에게 보내는 요청 원문</summary><pre id="preview"></pre></details>
+      <details class="raw"><summary>요청 원문</summary><pre id="preview"></pre></details>
     </div></section>
     <section class="composer"><div class="col">
       <div class="askbar">
         <div class="setting"><span class="k">회사 규칙</span>
           <button type="button" class="sw" id="rule" role="switch" aria-checked="false" aria-label="회사 규칙 켜기"></button>
           <span class="v" id="ruletext"></span>
-          <span class="d">켜면 밖으로 보내는 호출에 이 질문을 하나 더 묻습니다. 멈추는 쪽으로만 씁니다.</span></div>
+          <span class="d">켜면 밖으로 보내는 호출에 질문 하나 추가 · 멈추는 데만 사용</span></div>
         <button class="b main" id="ask" form="form">문지기에게 묻기</button>
       </div>
     </div></section>
@@ -141,7 +140,7 @@ function buildBody(){
 function refresh(){
   $("#preview").textContent = JSON.stringify(buildBody(), null, 1);
   const n = $("#source").value.length;
-  $("#count").textContent = n ? `${n.toLocaleString("ko-KR")}자${n > 4000 ? " — 앞 4,000자만 판정에 들어갑니다" : ""}` : "";
+  $("#count").textContent = n ? `${n.toLocaleString("ko-KR")}자${n > 4000 ? " · 판정에는 앞 4,000자까지" : ""}` : "";
 }
 function fill(key){
   const p = PRESETS[key]; if (!p) return;
@@ -153,14 +152,14 @@ function clearResult(){ T.last = null; $("#ruling").innerHTML = ""; renderInside
 
 // ───────────── 묻기 ─────────────
 function failWords(e){
-  if (e.status === 0) return "문지기 서버에 연결하지 못했습니다.";
-  if (e.status === 400) return "서버가 이 요청을 받지 않았습니다. 시킨 말은 500자, 읽은 글은 2만 자까지입니다.";
-  if (e.status === 413) return "요청이 너무 큽니다.";
-  if (e.status === 404) return "시간이 지나 이어서 물을 수 없습니다. 처음부터 다시 물어 주세요.";
-  if (e.status === 502) return "판정 서버(Zoro-1)에 닿지 못했습니다. 잠시 뒤 다시 물어 주세요.";
-  return "판정을 받지 못했습니다 — " + e.message;
+  if (e.status === 0) return "문지기 서버 연결 실패";
+  if (e.status === 400) return "서버가 거절한 요청 · 시킨 말 500자 · 읽은 글 2만 자 한도";
+  if (e.status === 413) return "너무 큰 요청";
+  if (e.status === 404) return "시간이 지나 이어 묻기 불가 · 처음부터 다시";
+  if (e.status === 502) return "판정 서버(Zoro-1) 연결 실패 · 잠시 뒤 다시";
+  return e.message;
 }
-function showFail(e){ $("#ruling").innerHTML = `<div class="ruling"><p class="h">판정을 받지 못했습니다</p><p class="why">${esc(failWords(e))}</p></div>`; showRuling(); }
+function showFail(e){ $("#ruling").innerHTML = `<div class="ruling"><p class="h">판정 실패</p><p class="why">${esc(failWords(e))}</p></div>`; showRuling(); }
 function showRuling(){ $("#ruling").scrollIntoView({block:"nearest"}); }      // 결정 띠가 화면 밖이면 보이는 데까지만 옮긴다
 async function ask(ev){
   ev.preventDefault();
@@ -168,7 +167,7 @@ async function ask(ev){
   const body = buildBody();
   if (!body.call.user_request){ $("#req").focus(); return; }
   T.busy = true; $("#ask").disabled = true;
-  $("#ruling").innerHTML = `<div class="ruling"><p class="h pulse">문지기가 확인하는 중…</p></div>`; showRuling();
+  $("#ruling").innerHTML = `<div class="ruling"><p class="h pulse">문지기 확인 중…</p></div>`; showRuling();
   try {
     const v = await api("/gate/direct", body);
     T.last = {call:body.call, v, final:!v.needs_reason};
@@ -190,17 +189,17 @@ const asCall = L => ({id:"try", n:1, name:L.call.tool_call.name, args:L.call.too
 function renderResult(){
   const L = T.last, c = asCall(L);
   if (L.final) $("#ruling").innerHTML = rulingHTML(c, null, false, true);
-  else $("#ruling").innerHTML = `<div class="ruling ask"><p class="h">${L.thinking ? `문지기가 더 따져 보는 중입니다 <span class="mono" id="timer"></span>` : "문지기가 바로 정하지 못했습니다"}</p>
-    <p class="why">막을 이유도, 그냥 통과시킬 확신도 없습니다.</p>
-    <p class="sub">실제 비서였다면 여기서 Zoro-1이 생각을 적은 뒤 같은 질문에 다시 답합니다. 몇 초에서 수십 초가 걸립니다.</p>
-    <div class="act">${L.thinking ? "" : `<button type="button" class="b" id="more">더 따져 보게 하기</button>`}<span class="grow"></span><button type="button" class="linkish" data-peek="try">문지기가 본 것</button></div></div>`;
+  else $("#ruling").innerHTML = `<div class="ruling ask"><p class="h">${L.thinking ? `더 따져 보는 중 <span class="mono" id="timer"></span>` : "바로 정하지 못한 호출"}</p>
+    <p class="why">막을 이유도 통과시킬 확신도 부족</p>
+    <p class="sub">실제라면 여기서 Zoro-1이 생각을 적고 같은 질문에 다시 답하는 단계 · 몇 초에서 수십 초</p>
+    <div class="act">${L.thinking ? "" : `<button type="button" class="b" id="more">더 따져 보기</button>`}<span class="grow"></span><button type="button" class="linkish" data-peek="try">문지기가 본 것</button></div></div>`;
   renderInside(); showRuling();
 }
 function renderInside(){
   $("#desk").classList.toggle("open", T.inside);
   if (!T.inside){ $("#inside").innerHTML = ""; return; }
   $("#inside").innerHTML = `<div class="ih"><h2>문지기가 본 것</h2><button type="button" class="b quiet" id="closeinside">닫기</button></div>`
-    + (T.last ? insideHTML(asCall(T.last), {start:{}}) : `<p class="empty">「문지기에게 묻기」를 누르면, 문지기가 Zoro-1에게 따로 물은 질문의 답과 걸린 정책 줄이 여기에 나옵니다.</p>`);
+    + (T.last ? insideHTML(asCall(T.last), {start:{}}) : `<p class="empty">「문지기에게 묻기」를 누르면 Zoro-1에게 따로 물은 질문의 답과 걸린 정책 줄 표시</p>`);
 }
 setInterval(() => { const el = $("#timer"); if (el) el.textContent = ((performance.now() - T.t0) / 1000).toFixed(1) + "초"; }, 100);
 
@@ -226,7 +225,7 @@ async function health(){
     const d = await api("/health");
     if (d.rules && d.rules.pii && d.rules.pii.text) $("#ruletext").textContent = d.rules.pii.text;
     h.className = "health " + (d.ok ? "ok" : "bad");
-    h.innerHTML = `<i></i>${d.ok ? "판정 서버 연결됨" : "판정 서버 응답 없음"}`;
+    h.innerHTML = `<i></i>${d.ok ? "판정 서버 연결" : "판정 서버 무응답"}`;
   } catch (e) { h.className = "health bad"; h.innerHTML = `<i></i>서버 연결 끊김`; }
 }
 
