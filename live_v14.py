@@ -53,9 +53,7 @@ def _wrap(v: dict, dec: str, rule: str) -> dict:
 def direct(url: str, call: dict, rules: list | None = None) -> dict:
     v = gate.check_direct(url, call, "v2", rules)
     v["ms"]["total"] = v["ms"]["direct"]
-    dec, rule = _decide(v, call)
-    if dec == "MISSING" and _rule_hit(v):      # 규칙이 이미 멈췄다 — 추론을 기다리지 않는다
-        dec, rule = "CONFIRM", "company rule"
+    dec, rule = _decide(v, call)                # 규칙이 걸렸으면 _wrap이 MISSING도 CONFIRM으로 올린다 — 추론을 기다리지 않는다
     out = _wrap(v, dec, rule)
     out["_v2"] = v                              # /gate/reason이 v2 기록 위에 추론을 잇는다(응답 전에 server가 뺀다)
     return out

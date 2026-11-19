@@ -36,6 +36,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gate  # noqa: E402
 import worker  # noqa: E402
+try:                                    # 플레이그라운드 v14(11-20) — 실패해도 기본 판은 산다
+    import live_v14  # noqa: E402
+except Exception:                       # noqa: BLE001
+    live_v14 = None
 
 HERE = Path(__file__).resolve().parent
 RUNS: dict[str, "worker.Run"] = {}
@@ -48,6 +52,16 @@ MAX_BODY = 64 * 1024          # 요청 본문 상한 → 413
 MAX_LIVE_RUNS = 2             # 동시에 도는 라이브 일꾼 판 → 429
 MAX_TASK = 500                # task·user_request 글자 상한 → 400
 MAX_SOURCE = 20_000           # source_text 글자 상한 → 400 (판정 state에는 어차피 앞 4,000자만 들어간다)
+
+
+def _is_v14(body: dict) -> bool:
+    """플레이그라운드(try.html)만 "policy": "v14"를 보낸다 — 무대 장면·콘솔은 기본 판 그대로."""
+    return body.get("policy") == "v14" and live_v14 is not None
+
+
+def _public(v: dict) -> dict:
+    """응답·기록에서 v14 내부 키(_v2 = 추론을 이을 v2 원본)를 뺀다. PENDING에는 원본이 들어간다."""
+    return {k: x for k, x in v.items() if k != "_v2"}
 
 
 def _log(kind: str, call: dict, verdict: dict) -> None:
@@ -133,7 +147,10 @@ class H(BaseHTTPRequestHandler):
                 call = body.get("call", body)
                 if err := _validate(call):
                     return self._send(400, {"error": err})
-                v = gate.check_direct(CFG["upstream"], call, body.get("policy") or None, _rules(body))
+                if _is_v14(body):
+                    v = live_v14.direct(CFG["upstream"], call, _rules(body))
+                else:
+                    v = gate.check_direct(CFG["upstream"], call, body.get("policy") or None, _rules(body))
                 v["ms"]["total"] = v["ms"]["direct"]
                 if v["needs_reason"]:
                     _gc()
@@ -141,6 +158,7 @@ class H(BaseHTTPRequestHandler):
                     with LOCK:
                         PENDING[rid] = (time.time(), call, v)
                     v["reason_id"] = rid
+                v = _public(v)
                 _log("direct", call, v)
                 return self._send(200, v)
             if path == "/gate/reason":
@@ -150,7 +168,11 @@ class H(BaseHTTPRequestHandler):
                 if not item:
                     return self._send(404, {"error": "unknown or expired reason_id"})
                 _, call, v0 = item
-                v = gate.check_reason(CFG["upstream"], call, v0)
+                if v0.get("policy") == "v14" and live_v14:
+                    v = live_v14.reason(CFG["upstream"], call, v0)
+                else:
+                    v = gate.check_reason(CFG["upstream"], call, v0)
+                v = _public(v)
                 v["reason_id"] = rid
                 _log("reason", call, v)
                 return self._send(200, v)
@@ -158,8 +180,14 @@ class H(BaseHTTPRequestHandler):
                 call = body.get("call", body)
                 if err := _validate(call):
                     return self._send(400, {"error": err})
-                v = gate.check(CFG["upstream"], call, escalate=not body.get("direct_only"), pv=body.get("policy") or None,
-                               rules=_rules(body))
+                if _is_v14(body):
+                    v = live_v14.direct(CFG["upstream"], call, _rules(body))
+                    if v["needs_reason"] and not body.get("direct_only"):
+                        v = live_v14.reason(CFG["upstream"], call, v)
+                    v = _public(v)
+                else:
+                    v = gate.check(CFG["upstream"], call, escalate=not body.get("direct_only"), pv=body.get("policy") or None,
+                                   rules=_rules(body))
                 _log("ladder", call, v)
                 return self._send(200, v)
             if path == "/worker/run":
@@ -202,7 +230,7 @@ class H(BaseHTTPRequestHandler):
                 ok = True
             except Exception as e:
                 up, ok = str(e), False
-            return self._send(200, {"ok": ok, "policy": gate.ACTIVE, "policy_version": gate.active_version(), "policy_versions": gate.POLICY_VERSIONS,
+            return self._send(200, {"ok": ok, "policy": gate.ACTIVE, "policy_version": gate.active_version(), "policy_versions": {**gate.POLICY_VERSIONS, **({"v14": live_v14.VERSION} if live_v14 else {})},
                                     "rules": {k: {"text": r["text"], "threshold": r["threshold"], "effect": r["effect"]} for k, r in gate.RULES.items()},
                                     "rules_version": gate.RULES_VERSION, "upstream": CFG["upstream"],
                                     "models": up, "pending": len(PENDING)})

@@ -189,6 +189,22 @@ function whyParts(v){
   if (r === "known read-only tool" || r === "read & injected<0.5") return ["읽기 전용", ""];
   if (/^match>=0\.8/.test(r)) return ["정상 요청", "외부 지시(인젝션)와 무관한 작업입니다"];
   if (r === "no rule fired") return ["추가 추론 필요", ""];
+  // v14 결정 코드(v5～v14)의 규칙 이름 — 플레이그라운드가 "policy": "v14"로 부를 때만 나온다(11-20)
+  if (/^unknown tool & injected>=/.test(r)) return ["프롬프트 인젝션 감지", "사용자 요청이 아니라 읽은 문서 속 숨겨진 지시에서 나온 작업입니다"];
+  if (/^unknown tool & match<=/.test(r)) return ["요청하지 않은 작업", ""];
+  if (/^unknown tool & match>=/.test(r)) return ["정상 요청", "외부 지시(인젝션)와 무관한 작업입니다"];
+  if (/^unknown tool & unsure/.test(r)) return ["확신 부족", "처음 보는 도구라 사람 확인이 필요합니다"];
+  if (/^unsure & safe & reasoned/.test(r)) return ["확신 부족", "외부 전송·삭제가 아닌 작업이라 통과했습니다"];
+  if (/^unsure & safe but reasoned/.test(r)) return ["확신 부족", "추론 뒤에도 요청과 맞는지 확신할 수 없어 사람 확인이 필요합니다"];
+  if (/^reasoning flipped/.test(r)) return ["추론이 뒤집은 의심", "1차 판별이 의심한 호출이라 사람 확인이 필요합니다"];
+  if (/^args carry outside target/.test(r)) return ["요청에 없는 바깥 주소", "요청하지 않은 받는 사람·주소가 호출에 들어 있습니다"];
+  if (/^args touch sensitive target/.test(r)) return ["요청하지 않은 민감 대상", "비밀값·외부 공개·보안 끄기·넓은 삭제는 요청에 없었습니다"];
+  if (/^args take target-shaped value/.test(r)) return ["바깥 글에서 온 값", "경로·주소가 사용자 요청이 아니라 읽은 문서에서 왔습니다"];
+  if (/^call shape/.test(r)) return ["위험한 호출 모양", "권한·공개 범위를 올리거나 한 호출에 여러 일을 묶었습니다"];
+  if (/touches hidden\/system path/.test(r)) return ["숨김 설정·시스템 경로", "요청하지 않은 숨김 설정·시스템 경로를 건드립니다"];
+  if (/message carries words from outside text/.test(r)) return ["보내는 글에 바깥 글의 식별자", "요청에 없던 식별자가 읽은 문서에서 옮겨 왔습니다"];
+  if (/setting turned off/.test(r)) return ["요청하지 않은 설정 끄기", ""];
+  if (/^v14 per-field request check/.test(r)) return ["요청하지 않은 범위 확대", "공개 범위·권한·켜는 칸·목적지는 요청에 없었습니다"];
   return [r, ""];
 }
 function whyWords(v){ return whyParts(v).filter(Boolean).join(" · "); }        // 한 줄로 이은 것(「판별 상세」· 콘솔이 쓴다)
@@ -252,6 +268,12 @@ function storyForCall(c, S, o){
     if (/^gate unreachable/.test(r))
       return [`검증 서버가 중단돼 안전을 위해 ${act}${eul(act)} 멈춰 두었습니다`,
         `검증 서버가 응답하지 않을 때는 위험 작업을 실행하지 않고 보류합니다.`];
+    if (/^(unsure & safe but reasoned|reasoning flipped|unknown tool & unsure)/.test(r))
+      return [`요청과 맞는지 확신할 수 없는 ${act}${eul(act)} 실행 전 멈추고 확인을 요청했습니다`,
+        `${askLead}심층 추론 뒤에도 요청과 맞는다고 확신할 수 없어, 실행 전에 문지기가 멈추고 사람 확인을 요청했습니다.`];
+    if (/^(args |call shape|message carries|v14 per-field)|touches hidden|setting turned off/.test(r))
+      return [`요청에 없는 값이 든 ${act}${eul(act)} 실행 전 멈추고 확인을 요청했습니다`,
+        `${askLead}호출 인자에 요청하지 않은 값이 들어 있어, 실행 전에 문지기가 멈추고 사람 확인을 요청했습니다.`];
     return [`되돌릴 수 없는 ${act}${ira(act)} 실행 전 멈추고 확인을 요청했습니다`,
       `명확한 규칙 위반은 아니지만 안전하다고 확신할 수 없어, 실행 전에 문지기가 멈추고 사람 확인을 요청했습니다.`];
   }

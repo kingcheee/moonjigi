@@ -74,8 +74,11 @@
           <section class="brief"><div class="col">
             <div class="presets-row">
               <div class="presets" id="presets"></div>
+              <button type="button" class="b quiet sm" id="redteam" title="밤새 측정에서 예전 판(v3b)을 통과한 공격 중 하나를 채웁니다">강한 공격 던지기</button>
               <button type="button" class="b quiet sm" id="reset-try">초기화</button>
             </div>
+            <p class="hint">판정: v14 — 밤새 공격 546건을 막은 판 · 직접 뚫어 보세요 · 모든 시도는 기록됩니다</p>
+            <p class="hint" id="redteam-note" hidden></p>
           </div></section>
           <section class="thread" id="thread"><div class="col">
             <form id="form">
@@ -126,6 +129,9 @@ const FIELDS = {
   list_events:  [["date", "날짜", "s"]],
   create_event: [["title", "제목", "s"], ["start", "시작 시각", "s"], ["end", "종료 시각", "s"], ["attendees", "참석자", "a"]],
 };
+// 표에 없는 인자 이름(「강한 공격 던지기」 목록이 가져오는 것) — 화면 표기만, 보내는 이름은 그대로
+const EXTRA_KO = {src:"원래 경로", dst:"옮길 곳", description:"설명", visibility:"공개 범위", attach_link:"첨부 링크", repeat:"반복",
+  participants:"참석자", start_time:"시작 시각", end_time:"종료 시각", with:"공유 대상자", access:"권한", link_sharing:"링크 공유"};
 const PRESETS = {
   normal: {tag:"정상 작업", name:"메일 목록 조회",
     req:"오늘 온 메일 요약해줘", tool:"list_mail", args:{folder:"inbox"}, actions:[], source:""},
@@ -154,9 +160,10 @@ function renderPresets(){
     `<button type="button" class="b${T.preset === k ? " active" : ""}" data-preset="${k}" aria-pressed="${T.preset === k}"><b>${esc(p.tag)}</b>${esc(p.name)}</button>`
   ).join("");
 }
-function renderFields(tool, values = {}){
-  const spec = [...FIELDS[tool]];
-  for (const [k, v] of Object.entries(values)) if (!spec.some(f => f[0] === k)) spec.push([k, k, typeof v === "boolean" ? "b" : Array.isArray(v) ? "a" : "s"]);
+function renderFields(tool, values = {}, only = false){       // only: 값이 있는 칸만(「강한 공격 던지기」 — 시나리오 인자 이름 그대로)
+  const spec = FIELDS[tool].filter(f => !only || f[0] in values);
+  for (const [k, v] of Object.entries(values)) if (!spec.some(f => f[0] === k))
+    spec.push([k, EXTRA_KO[k] || k, typeof v === "boolean" ? "b" : Array.isArray(v) ? "a" : typeof v === "string" && (v.includes("\n") || v.length > 120) ? "t" : "s"]);
   const head = [], body = [];
   for (const [k, ko, t] of spec){
     const v = values[k], id = "f_" + k;
@@ -182,7 +189,7 @@ function buildBody(){
     tool_call:{name:$("#tool").value, args:readArgs()}};
   const src = $("#source").value.trim();
   if (src) call.source_text = src.slice(0, 4000);
-  const body = {call};
+  const body = {call, policy:"v14"};        // 플레이그라운드는 v14로 판정(무대 장면·콘솔은 서버 기본 판)
   if (T.ruleOn) body.rules = ["pii"];
   return body;
 }
@@ -193,17 +200,37 @@ function refresh(){
 }
 function fill(key){
   const p = PRESETS[key]; if (!p) return;
-  T.preset = key;
+  T.preset = key; redNote("");
   $("#req").value = p.req; $("#tool").value = p.tool; renderFields(p.tool, p.args);
   $("#actions").value = p.actions.join("\n"); $("#source").value = p.source;
   renderPresets(); clearResult(); refresh();
 }
 function resetForm(){
-  T.preset = null;
+  T.preset = null; redNote("");
   $("#req").value = ""; $("#actions").value = ""; $("#source").value = "";
   renderFields($("#tool").value, {});
   renderPresets(); clearResult(); refresh();
   $("#req").focus();
+}
+// 「강한 공격 던지기」 — web/redteam.json(tools/build_redteam_json.py가 밤새 측정 기록에서 뽑음)에서 무작위 한 건
+let RED = null, redLast = -1;
+function redNote(text){ const el = $("#redteam-note"); el.textContent = text; el.hidden = !text; }
+async function redteam(){
+  try {
+    if (!RED){ const r = await fetch("redteam.json", {cache:"no-store"}); if (!r.ok) throw new Error(r.status); RED = (await r.json()).items || []; }
+  } catch (e) { return redNote("공격 목록을 불러오지 못했습니다"); }
+  if (!RED.length) return redNote("공격 목록이 비어 있습니다");
+  let i = Math.floor(Math.random() * RED.length);
+  if (RED.length > 1 && i === redLast) i = (i + 1) % RED.length;
+  redLast = i;
+  const x = RED[i], tc = x.tool_call || {};
+  if (!FIELDS[tc.name]) return redNote("이 화면에 없는 도구라 건너뜁니다");
+  T.preset = null;
+  $("#req").value = x.user_request || ""; $("#tool").value = tc.name; renderFields(tc.name, tc.args || {}, true);
+  $("#actions").value = (x.actions_so_far || []).join("\n"); $("#source").value = x.source_text || "";
+  const src = x.origin === "ours" ? "우리 팀 적응형 공격" : `공개 자료 ${x.origin}`;
+  redNote(`강한 공격 ${i + 1}/${RED.length} · ${src} · ${x.technique || ""} · 밤새 측정에서 예전 판(v3b)을 통과한 공격`);
+  renderPresets(); clearResult(); refresh();
 }
 function clearResult(){ T.last = null; T.inspect = null; $("#ruling").innerHTML = ""; renderInside(); renderHist(); }
 
@@ -292,7 +319,7 @@ function renderInside(){
 setInterval(() => { const el = $("#timer"); if (el) el.textContent = ((performance.now() - T.t0) / 1000).toFixed(1) + "초"; }, 100);
 
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-preset],[data-peek],[data-hist],#rule,#more,#closeinside,#toggle-inside,#reset-try,#clear-hist");
+  const el = e.target.closest("[data-preset],[data-peek],[data-hist],#rule,#more,#closeinside,#toggle-inside,#reset-try,#clear-hist,#redteam");
   if (!el) return;
   if (el.dataset.preset) return fill(el.dataset.preset);
   if (el.dataset.peek){ T.inspect = T.last; T.inside = true; return renderInside(); }
@@ -302,6 +329,7 @@ document.addEventListener("click", e => {
   if (el.id === "closeinside"){ T.inside = false; return renderInside(); }
   if (el.id === "toggle-inside"){ T.inside = !T.inside; return renderInside(); }
   if (el.id === "reset-try") return resetForm();
+  if (el.id === "redteam") return redteam();
   if (el.id === "clear-hist"){ T.hist = []; T.inspect = T.last; renderHist(); return renderInside(); }
 });
 document.addEventListener("keydown", e => {
