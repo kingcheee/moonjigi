@@ -59,11 +59,16 @@ const SCENES = {
     pi.on('exit', c => mark(`다른 에이전트 끝(종료 코드 ${c})`));
     const log = await page.$('#log');
     if (log) { await at(4.0); await log.scrollIntoViewIfNeeded(); mark('검문 기록 칸'); }
-    const before = await page.$$eval('[data-log-row]', r => r.length).catch(() => 0);
-    for (let k = 0; k < 40; k++) {      // 새 줄이 생길 때마다 표시(최대 약 20초)
+    // 새 줄이 생길 때만 표시(최대 약 20초). 「최근 연결」은 기다리지 않는다 — pi 판 기록은 노트북에 남아 공개 서버 목록에 안 생긴다
+    const count = () => page.$$eval('[data-log-row]', r => r.length).catch(() => 0);
+    const confirms = () => page.$$eval('[data-log-row][data-decision="CONFIRM"]', r => r.length).catch(() => 0);
+    const before = await count(), c0 = await confirms();
+    let last = before;
+    for (let k = 0; k < 40; k++) {
       await sleep(500);
-      const n = await page.$$eval('[data-log-row]', r => r.length).catch(() => 0);
-      if (n > before) { mark(`검문 기록 ${n - before}줄 늘어남`); if (n - before >= 3) break; }
+      const n = await count();
+      if (n !== last) { last = n; mark(`검문 기록 ${n - before}줄 늘어남`); }
+      if (await confirms() > c0) { mark('보류 줄(사람 확인) 뜸'); break; }
     }
   } },
 };
