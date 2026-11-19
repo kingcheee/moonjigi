@@ -192,6 +192,7 @@ const ROOM_OF_RULE = {"risky & injected>=0.8":"injected","risky & match<=0.2":"m
 const DEC_KO = {PASS:"통과 · 실행", REASON:"추론 후 다시", CONFIRM:"사람 확인", BLOCK:"차단", WAIT:"검문 중"};
 
 let S = null;          // 지금 보고 있는 판의 상태
+let HOLD = null;       // ?hold=1 — 무대용: 탭을 미리 열어 두고 Space·Enter로 재생을 시작한다
 let token = 0;         // 판을 바꾸면 이전 루프를 끊는다
 
 function newState(rid, live){
@@ -434,6 +435,14 @@ async function startReplay(rid){
   render();
 }
 
+async function holdReplay(rid){
+  HOLD = rid;
+  let st = {};
+  try { const d = await api(`/worker/events?run=${encodeURIComponent(rid)}&since=0`); st = (d.events || []).find(e => e.type === "run_start") || {}; }
+  catch (e) { $("#stream").innerHTML = `<div class="empty">저장된 판 ${esc(rid)}을 찾지 못했습니다.</div>`; HOLD = null; return; }
+  $("#stream").innerHTML = `<div class="empty">재생 준비됨 — 「${esc(st.task || rid)}」 · ${esc(st.title || "")}<br><b>Space</b> 또는 <b>Enter</b>를 누르면 재생합니다</div>`;
+}
+
 // ---------- 장면·목록·상태 ----------
 async function loadScenes(){
   try {
@@ -475,6 +484,7 @@ $("#replay").onchange = e => { if (e.target.value) startReplay(e.target.value); 
 $("#skip").onclick = () => { if (S && !S.live) S.skip = true; };
 document.addEventListener("keydown", e => {
   if (e.target.tagName === "SELECT" || (e.target.tagName === "INPUT" && e.target.type !== "checkbox") || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (HOLD && (e.key === " " || e.key === "Enter")){ e.preventDefault(); const r = HOLD; HOLD = null; startReplay(r); return; }
   if (/^[1-9]$/.test(e.key)){ const b = document.querySelectorAll("#scenes .scene")[+e.key - 1]; if (b) b.click(); }
   if (e.key === "y" || e.key === "Y") answer(true);
   if (e.key === "n" || e.key === "N") answer(false);
@@ -483,7 +493,7 @@ document.addEventListener("keydown", e => {
 const qs = new URLSearchParams(location.search);
 loadScenes(); refreshRuns(); health(); setInterval(health, 10000);
 if (qs.get("speed")) $("#speed").value = qs.get("speed");
-if (qs.get("replay")) startReplay(qs.get("replay"));
+if (qs.get("replay")) (qs.get("hold") ? holdReplay : startReplay)(qs.get("replay"));
 </script>
 </body>
 </html>
