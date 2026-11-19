@@ -1,0 +1,193 @@
+/* 문지기 콘솔 — console.html만 쓴다. shared.css 뒤에 읽힌다.
+   색·글꼴·간격·모서리·선 굵기는 shared.css 맨 위 :root 토큰만 쓴다(디자인이 바뀌면 토큰 값만 바뀐다). 색 값을 여기 적지 않는다.
+   이름은 전부 cn- 로 시작한다(시연 화면의 이름과 겹치지 않게). shared.css에서 빌려 쓰는 것: .topbar .name .grow .health .consolelink .b .cmd .mono .t-*
+   넓은 화면(1280px 이상) = 메뉴 | 승인 대기 + 검문 기록 | 규칙 + 연결 이 한눈에. 그보다 좁으면 메뉴가 탭이 되고 칸을 하나씩 본다.
+   720px 아래에서는 검문 기록의 한 줄이 두 줄짜리 묶음이 된다. */
+
+body.cn{height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-size:var(--fs-s);line-height:1.5}
+.cn-product{margin-left:calc(-1 * var(--s3));font-size:var(--fs-s);color:var(--muted)}
+#status-policy:not(:empty)::before{content:" · "}
+
+/* ── 뼈대 ───────────────────────────────────────────── */
+.cn-shell{flex:1;min-height:0;display:grid;grid-template-columns:208px minmax(0,1fr) 352px}
+.cn-left{min-height:0;display:flex;flex-direction:column;overflow:auto;padding:var(--s3) var(--s2);background:var(--side,var(--surface));border-right:var(--rule) solid var(--line)}
+.cn-main{min-width:0;min-height:0;display:flex;flex-direction:column}
+.cn-side{min-width:0;min-height:0;overflow:auto;border-left:var(--rule) solid var(--line)}
+.cn-panel{min-width:0}
+.cn-panel:focus{outline:0}
+
+/* 메뉴 — 지금 칸은 채운 면 + 굵기(왼쪽 색 띠 없음) */
+.cn-nav{display:flex;flex-direction:column;gap:var(--s1)}
+.cn-nav a{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);min-height:36px;padding:0 var(--s3);border-radius:var(--radius);color:var(--ink-2);text-decoration:none;white-space:nowrap}
+.cn-nav a:hover{color:var(--ink)}
+.cn-nav a[aria-current]{background:var(--surface);color:var(--ink);font-weight:var(--fw-semi,600)}
+.cn-n{color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
+#nav-ap-n:not(:empty),#ap-n:not([data-n="0"]){color:var(--ask);font-weight:var(--fw-semi,600)}
+
+/* 상태 — 메뉴 아래 */
+.cn-state{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s1) var(--s3);margin:auto 0 0;padding:var(--s3) var(--s3) var(--s1);border-top:var(--rule) solid var(--line);font-size:var(--fs-xs)}
+.cn-state dt{color:var(--muted);white-space:nowrap}
+.cn-state dd{margin:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 칸 머리 · 작은 머리 · 빈 칸 */
+.cn-h{display:flex;align-items:center;gap:var(--s2);min-height:52px;padding:0 var(--s5)}
+.cn-h h2{margin:0;font-size:var(--fs-m);font-weight:var(--fw-semi,600)}
+.cn-grow{flex:1}
+.cn-sub{display:flex;gap:var(--s2);margin:0;padding:var(--s4) var(--s5) var(--s1);font-size:var(--fs-xs);font-weight:400;color:var(--muted)}
+.cn-none{margin:0;padding:0 var(--s5) var(--s4);color:var(--muted)}
+.cn-pad{padding:0 var(--s5)}
+
+/* 라벨 — 값 */
+.cn-kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s1) var(--s4);margin:0}
+.cn-kv dt{color:var(--muted);white-space:nowrap}
+.cn-kv dd{margin:0;overflow-wrap:anywhere}
+.cn-kv .mono{font-size:var(--fs-xs);line-height:1.7}
+.cn-pre{white-space:pre-wrap;max-height:9em;overflow:auto}
+
+/* ── 승인 대기 ───────────────────────────────────────── */
+#approvals{flex:none;max-height:52%;overflow:auto;border-bottom:var(--rule) solid var(--line)}
+.cn-ap{margin:0 var(--s5) var(--s3);padding:var(--s3) var(--s4);background:var(--ask-bg);border-radius:var(--radius-lg,var(--radius))}
+.cn-ap-head{display:flex;align-items:center;flex-wrap:wrap;gap:var(--s2) var(--s3)}
+.cn-ap-what{flex:1;min-width:0;display:flex;align-items:baseline;gap:var(--s2);margin:0;font-size:var(--fs-m)}
+.cn-ap-what b{font-weight:var(--fw-semi,600);white-space:nowrap}
+.cn-ap-what span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cn-ap-left{font-size:var(--fs-xs);color:var(--ask);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cn-ap-act{display:flex;gap:var(--s2)}
+.cn-ap .b{min-height:36px}
+.cn-ap .cn-kv{margin-top:var(--s2)}
+.cn-ap .cn-kv dt{color:var(--ask)}
+
+/* 처리 기록 — 사람이 답한 호출 */
+.cn-done{list-style:none;margin:0;padding:0 var(--s5) var(--s2)}
+.cn-done li{display:grid;grid-template-columns:84px minmax(0,1fr) auto;gap:var(--s3);align-items:baseline;min-height:36px;padding:var(--s2) 0;border-top:var(--rule) solid var(--line)}
+.cn-done li:nth-child(n+4){display:none}
+#approvals:not([data-pending="0"]) #ap-done-box{display:none}      /* 기다리는 건이 있으면 그것만 */
+.cn-done .cn-t{color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cn-done .cn-w{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cn-done .cn-w b{font-weight:var(--fw-semi,600)}
+.cn-done .cn-r{white-space:nowrap}
+
+/* ── 검문 기록 ───────────────────────────────────────── */
+#log{flex:1;min-height:0;display:flex;flex-direction:column}
+.cn-live{font-size:var(--fs-xs);color:var(--muted);white-space:nowrap}
+.cn-live i{display:inline-block;width:6px;height:6px;margin-right:var(--s1);border-radius:50%;background:var(--line-2);vertical-align:1px}
+.cn-live[data-state="ok"] i{background:var(--pass)}
+.cn-live[data-state="bad"] i{background:var(--block)}
+.cn-seg{display:inline-flex;gap:var(--s1);padding:var(--s1);border-radius:var(--radius);background:var(--surface)}
+.cn-seg button{min-height:28px;padding:0 var(--s3);border:0;border-radius:var(--s1);background:none;color:var(--muted);font-size:var(--fs-xs);white-space:nowrap}
+.cn-seg button:hover{color:var(--ink)}
+.cn-seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);font-weight:var(--fw-semi,600)}
+
+.cn-tablewrap{flex:1;min-height:0;overflow:auto;border-top:var(--rule) solid var(--line)}
+.cn-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0}
+.cn-table th{position:sticky;top:0;z-index:1;height:36px;padding:0 var(--s3);border-bottom:var(--rule) solid var(--line);background:var(--side,var(--surface));
+  text-align:left;font-size:var(--fs-xs);font-weight:400;color:var(--muted);white-space:nowrap}
+.cn-table td{height:44px;padding:0 var(--s3);border-bottom:var(--rule) solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cn-table th:first-child,.cn-table td:first-child{padding-left:var(--s5)}
+.cn-table th:last-child,.cn-table td:last-child{padding-right:var(--s5)}
+.cn-table tbody tr:hover{background:var(--side,var(--surface))}
+.cn-c-time{width:104px}
+.cn-c-tool{width:128px}
+.cn-c-dec{width:112px}
+.cn-c-why{width:25%}
+.cn-c-ms{width:96px}
+.cn-table .cn-c-ms{text-align:right}
+td.cn-c-time,td.cn-c-ms{color:var(--ink-2);font-variant-numeric:tabular-nums}
+td.cn-c-tool{font-weight:var(--fw-semi,600)}
+td.cn-c-target,td.cn-c-why{color:var(--ink-2)}
+#log .cn-none{padding-top:var(--s4)}
+
+/* 결정 — 점 + 낱말. 통과는 조용히, 보류·차단은 색과 굵기로 */
+.cn-d{display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap}
+.cn-d::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--line-2)}
+.cn-d-pass{color:var(--ink-2)}
+.cn-d-pass::before{background:var(--pass)}
+.cn-d-ask{color:var(--ask);font-weight:var(--fw-semi,600)}
+.cn-d-ask::before{background:var(--ask)}
+.cn-d-block{color:var(--block);font-weight:var(--fw-semi,600)}
+.cn-d-block::before{background:var(--block)}
+.cn-d-muted{color:var(--muted)}
+.cn-d-now{animation:cn-pulse 1.2s ease-in-out infinite}
+@keyframes cn-pulse{50%{opacity:.4}}
+
+/* 새로 붙은 줄 — 잠깐 짙었다가 가라앉는다(크기·자리는 움직이지 않는다) */
+.cn-new td{animation:cn-in 2s ease-out}
+@keyframes cn-in{from{background:var(--line)}to{background:transparent}}
+@media (prefers-reduced-motion: reduce){.cn-new td,.cn-d-now{animation:none}}
+
+/* ── 규칙 ───────────────────────────────────────────── */
+#rules{padding-bottom:var(--s4);border-bottom:var(--rule) solid var(--line)}
+.cn-rule{padding:0 var(--s5)}
+.cn-rule + .cn-rule{margin-top:var(--s4);padding-top:var(--s4);border-top:var(--rule) solid var(--line)}
+.cn-rule-text{margin:0 0 var(--s2);font-size:var(--fs-m);font-weight:var(--fw-semi,600);line-height:1.45}
+
+/* ── 연결 ───────────────────────────────────────────── */
+#connect{padding-bottom:var(--s5)}
+.cn-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);padding:0 var(--s5)}
+.cn-label{margin:0;font-size:var(--fs-xs);font-weight:400;color:var(--muted)}
+.cn-copy{min-height:28px;padding:0 var(--s2);border:0;border-radius:var(--radius);background:none;color:var(--ink-2);font-size:var(--fs-xs)}
+.cn-copy:hover{background:var(--surface);color:var(--ink)}
+#connect .cmd{margin:var(--s1) var(--s5) 0}
+.cn-conns{list-style:none;margin:0;padding:0 var(--s5)}
+.cn-conns li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 var(--s3);padding:var(--s2) 0;border-top:var(--rule) solid var(--line)}
+.cn-conns li:first-child{border-top:0;padding-top:var(--s1)}
+.cn-conns .cn-who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cn-conns .cn-st{font-size:var(--fs-xs);color:var(--pass);white-space:nowrap}
+.cn-conns .cn-meta{grid-column:1/-1;font-size:var(--fs-xs);color:var(--muted);font-variant-numeric:tabular-nums}
+.cn-conns .cn-meta b{font-weight:var(--fw-semi,600)}
+
+/* ── 1280～1439px(노트북): 세 칸을 유지하되 옆 칸과 표의 고정 칸을 줄여 「대상」 자리를 남긴다 ─── */
+@media (min-width:1280px) and (max-width:1439px){
+  .cn-shell{grid-template-columns:184px minmax(0,1fr) 312px}
+  .cn-c-time{width:96px}
+  .cn-c-tool{width:120px}
+  .cn-c-dec{width:100px}
+  .cn-c-ms{width:88px}
+}
+
+/* ── 1280px 아래: 메뉴가 탭, 칸은 하나씩 ─────────────────── */
+@media (max-width:1279px){
+  .cn-shell{display:flex;flex-direction:column}
+  .cn-left{flex:none;display:block;overflow:visible;padding:0 var(--s3);background:var(--bg);border-right:0;border-bottom:var(--rule) solid var(--line)}
+  .cn-nav{flex-direction:row;gap:0;overflow-x:auto;scrollbar-width:none}
+  .cn-nav::-webkit-scrollbar{display:none}
+  .cn-nav a{flex:none;justify-content:flex-start;min-height:44px;padding:0 var(--s3);border-radius:0;color:var(--muted)}
+  .cn-nav a[aria-current]{background:none;box-shadow:inset 0 calc(-2 * var(--rule)) 0 var(--accent,var(--ink))}
+  .cn-state{display:none}
+  .cn-main,.cn-side{display:contents}
+  .cn-panel,body:not([data-tab="log"]) #log{display:none}
+  body[data-tab="approvals"] #approvals,body[data-tab="rules"] #rules,body[data-tab="connect"] #connect{display:block;flex:1;min-height:0;max-height:none;overflow:auto;border:0}
+  body[data-tab="log"] #log{display:flex}
+  .cn-done li:nth-child(n+4){display:grid}
+  #approvals:not([data-pending="0"]) #ap-done-box{display:block}
+  .cn-nav a{gap:var(--s1)}
+}
+
+/* ── 720px 아래(휴대폰): 여백을 줄이고, 검문 기록 한 줄 = 두 줄 묶음 ─── */
+@media (max-width:719px){
+  .cn-product{margin-left:0}
+  .cn-h{flex-wrap:wrap;min-height:48px;padding:var(--s2) var(--s4);gap:var(--s2)}
+  .cn-sub{padding-left:var(--s4);padding-right:var(--s4)}
+  .cn-none{padding-left:var(--s4);padding-right:var(--s4)}
+  .cn-pad,.cn-rule,.cn-row,.cn-conns,.cn-done{padding-left:var(--s4);padding-right:var(--s4)}
+  #connect .cmd{margin-left:var(--s4);margin-right:var(--s4)}
+  .cn-seg button{min-height:32px}
+  .cn-ap{margin:0 var(--s4) var(--s3)}
+  .cn-ap-what{flex:1 1 100%}
+  .cn-ap-act{margin-left:auto}
+  .cn-ap .b{min-height:44px;min-width:76px}
+  .cn-copy{min-height:36px}
+  .cn-done li{grid-template-columns:72px minmax(0,1fr) auto}
+
+  .cn-table,.cn-table tbody{display:block}
+  .cn-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}     /* 눈에만 안 보이게 — 읽어 주는 도구에는 남는다 */
+  .cn-table tr{display:grid;grid-template-columns:108px minmax(0,1fr) auto;gap:0 var(--s2);padding:var(--s2) var(--s4);border-bottom:var(--rule) solid var(--line)}   /* 첫 칸 너비를 고정해야 행마다 대상·사유가 같은 자리에서 시작한다 */
+  .cn-table td,.cn-table td:first-child,.cn-table td:last-child{width:auto;height:auto;padding:0;border:0}
+  td.cn-c-tool{grid-area:1/1}
+  td.cn-c-target{grid-area:1/2}
+  td.cn-c-dec{grid-area:1/3;justify-self:end}
+  td.cn-c-time{grid-area:2/1}
+  td.cn-c-why{grid-area:2/2}
+  td.cn-c-ms{grid-area:2/3}
+  td.cn-c-time,td.cn-c-why,td.cn-c-ms{font-size:var(--fs-xs);color:var(--muted)}
+}
