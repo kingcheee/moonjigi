@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>문지기 콘솔</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="console.css">
+</head>
+<body class="cn" data-tab="log">
+<!-- 문지기 콘솔 — 문지기를 자기 에이전트에 붙인 사람이 여는 운영 화면.
+     칸 넷: 승인 대기 #approvals · 검문 기록 #log · 규칙 #rules · 연결 #connect. 숫자·판정은 전부 서버 응답이다(그리는 일은 console.js).
+     화면에는 라벨·값·단추만 둔다. 영상 녹화가 이 id와 data- 이름을 잡으니 바꾸면 녹화 쪽에 알린다. -->
+<header class="topbar">
+  <a class="name" href="console.html">문지기</a>
+  <span class="cn-product">콘솔</span>
+  <span class="grow"></span>
+  <span class="health" id="status" data-state="wait"><i></i><span id="status-text">판정 서버 확인 중</span><span id="status-policy"></span></span>
+  <a class="consolelink" href="index.html">시연</a>
+</header>
+
+<div class="cn-shell">
+  <div class="cn-left">
+    <nav class="cn-nav" aria-label="콘솔 메뉴">
+      <a href="#approvals" data-nav="approvals">승인 대기<span class="cn-n" id="nav-ap-n"></span></a>
+      <a href="#log" data-nav="log" aria-current="page">검문 기록</a>
+      <a href="#rules" data-nav="rules">규칙<span class="cn-n" id="nav-rules-n"></span></a>
+      <a href="#connect" data-nav="connect">연결</a>
+    </nav>
+    <dl class="cn-state" aria-label="상태">
+      <dt>판정 서버</dt><dd id="st-judge">확인 중</dd>
+      <dt>정책</dt><dd><span id="st-policy"></span> <span class="mono t-muted" id="st-policy-v"></span></dd>
+      <dt>규칙 판</dt><dd class="mono" id="st-rules-v"></dd>
+      <dt>따져 보기 대기</dt><dd id="st-pending"></dd>
+    </dl>
+  </div>
+
+  <main class="cn-main">
+    <section class="cn-panel" id="approvals" tabindex="-1" aria-labelledby="h-approvals" data-pending="0">
+      <header class="cn-h"><h2 id="h-approvals">승인 대기</h2><span class="cn-n" id="ap-n" data-n="0">0</span></header>
+      <div id="ap-list" aria-live="polite"></div>
+      <p class="cn-none" id="ap-none">없음</p>
+      <div id="ap-done-box" hidden>
+        <h3 class="cn-sub">처리 기록</h3>
+        <ul class="cn-done" id="ap-done"></ul>
+      </div>
+    </section>
+
+    <section class="cn-panel" id="log" tabindex="-1" aria-labelledby="h-log">
+      <header class="cn-h">
+        <h2 id="h-log">검문 기록</h2>
+        <span class="cn-live" id="log-live" data-state="wait"><i></i><span id="log-live-text">자동 갱신</span></span>
+        <span class="cn-grow"></span>
+        <div class="cn-seg" role="group" aria-label="결정">
+          <button type="button" data-filter="all" aria-pressed="true">전체</button>
+          <button type="button" data-filter="PASS" aria-pressed="false">통과</button>
+          <button type="button" data-filter="CONFIRM" aria-pressed="false">보류</button>
+          <button type="button" data-filter="BLOCK" aria-pressed="false">차단</button>
+        </div>
+      </header>
+      <div class="cn-tablewrap">
+        <table class="cn-table">
+          <thead><tr>
+            <th class="cn-c-time" scope="col">시각</th>
+            <th class="cn-c-tool" scope="col">도구</th>
+            <th class="cn-c-target" scope="col">대상</th>
+            <th class="cn-c-dec" scope="col">결정</th>
+            <th class="cn-c-why" scope="col">사유</th>
+            <th class="cn-c-ms" scope="col">걸린 시간</th>
+          </tr></thead>
+          <tbody id="log-rows"></tbody>
+        </table>
+        <p class="cn-none" id="log-none">없음</p>
+      </div>
+    </section>
+  </main>
+
+  <aside class="cn-side">
+    <section class="cn-panel" id="rules" tabindex="-1" aria-labelledby="h-rules">
+      <header class="cn-h"><h2 id="h-rules">규칙</h2><span class="cn-n" id="rules-n"></span></header>
+      <div id="rules-list"></div>
+      <p class="cn-none" id="rules-none">없음</p>
+    </section>
+
+    <section class="cn-panel" id="connect" tabindex="-1" aria-labelledby="h-connect">
+      <header class="cn-h"><h2 id="h-connect">연결</h2></header>
+      <div class="cn-row"><h3 class="cn-label">등록</h3><button type="button" class="cn-copy" data-copy="#connect-cmd">복사</button></div>
+      <pre class="cmd" id="connect-cmd">pi mcp add moonjigi --exposure direct --env MOONJIGI_SCENE=refund-reply -- python3 /절대/경로/mcp/moonjigi_mcp.py</pre>
+      <h3 class="cn-sub">환경변수</h3>
+      <dl class="cn-kv cn-pad" id="connect-env"></dl>
+      <h3 class="cn-sub">도구<span class="cn-n" id="tools-n"></span></h3>
+      <dl class="cn-kv cn-pad" id="connect-tools"></dl>
+      <h3 class="cn-sub">최근 연결<span class="cn-n" id="conn-n"></span></h3>
+      <ul class="cn-conns" id="conn-list"></ul>
+      <p class="cn-none" id="conn-none">없음</p>
+    </section>
+  </aside>
+</div>
+
+<script src="moonjigi.js"></script>
+<script src="console.js"></script>
+</body>
+</html>
