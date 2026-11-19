@@ -25,6 +25,8 @@ def kind_of(sc: list[dict]) -> str:
     o = {x.get("origin") for x in sc}
     note = " ".join({x.get("set_note", "") for x in sc})
     if o == {"ours"}:
+        if "짝 대조" in note:
+            return "우리 짝 대조(어려운 정상)"
         if "적응형" in note:
             return "우리 적응형(v9 낱말 피하기)"
         if "적대적" in note:
