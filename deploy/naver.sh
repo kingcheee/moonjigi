@@ -62,6 +62,8 @@ push() (   # 서브셸 — 임시 폴더 정리 trap 이 밖으로 새지 않게
     [ -d "$CORE/$d" ] && rsync -a --exclude '__pycache__' "$CORE/$d/" "$stage/$d/"
     [ "$EXTRA" != "$CORE" ] && [ -d "$EXTRA/$d" ] && rsync -a --ignore-existing --exclude '__pycache__' "$EXTRA/$d/" "$stage/$d/"
   done
+  # 화면이 web/scenes.json(장면의 메일함·파일·일정)을 읽으면 CORE 의 scenes.json 으로 맞춘다 — server.py 는 web/ 밖 파일을 내주지 않는다
+  [ -f "$stage/web/scenes.json" ] && cp "$CORE/scenes.json" "$stage/web/scenes.json"
   log "올린다: CORE=$CORE EXTRA=$EXTRA → root@$IP:$REMOTE  (web: $(ls "$stage/web" | tr '\n' ' '))"
   srv "mkdir -p $REMOTE/logs"
   # --delete 를 쓰지 않는다 — 서버에서 새로 생긴 판(runs-live)·검문 기록(logs)을 지우지 않게
