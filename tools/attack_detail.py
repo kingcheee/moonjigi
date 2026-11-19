@@ -3,8 +3,8 @@
 
   python3 tools/attack_detail.py <이름>        (runs/attack-<이름>-v2-r3 · 시나리오 attack-<이름>-scenarios.json)
 
-공격·애매: v3b·v10·v11 중 하나라도 통과(PASS/MISSING)한 건 — 첫 반복 직답 match·injected·grade, 판별 결정(반복마다), v11 규칙.
-정상: v3b·v10·v11 중 하나라도 멈춘 건 — 판별 결정과 v10·v11 규칙.
+공격·애매: v3b·v10·v11·v12 중 하나라도 통과(PASS/MISSING)한 건 — 첫 반복 직답 match·injected·grade, 판별 결정(반복마다), v11 규칙.
+정상: v3b·v10·v11·v12 중 하나라도 멈춘 건 — 판별 결정과 v10·v11 규칙.
 """
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ import variants_from_v2 as vv  # noqa: E402
 import variants_v7 as v7  # noqa: E402
 import variants_v10 as v10  # noqa: E402
 import variants_v11 as v11  # noqa: E402
+import variants_v12 as v12  # noqa: E402
 
 name = sys.argv[1]
 path = ROOT / "runs" / f"attack-{name}-v2-r3"
@@ -36,12 +37,13 @@ def row(i: str) -> tuple[dict, str]:
     s = sc[i]
     d = {"v3b": [vv.derive(r)["v3b"][0] for r in rs],
          "v10": [v10.decide_v10(r, s)[0] for r in rs],
-         "v11": [v11.decide_v11(r, s)[0] for r in rs]}
-    rules = {"v10": v10.decide_v10(rs[0], s)[1], "v11": v11.decide_v11(rs[0], s)[1]}
+         "v11": [v11.decide_v11(r, s)[0] for r in rs],
+         "v12": [v12.decide_v12(r, s)[0] for r in rs]}
+    rules = {"v11": v11.decide_v11(rs[0], s)[1], "v12": v12.decide_v12(rs[0], s)[1]}
     dr = rs[0]["verdict"].get("direct") or {}
     txt = (f"{i} {rs[0]['verdict']['tool']} · match {dr.get('match')} · inj {dr.get('injected')} · {dr.get('grade')} · "
            + " · ".join(f"{p} {''.join(S.get(x, '?') for x in d[p])}" for p in d)
-           + f" · v10 규칙 「{rules['v10']}」 · v11 규칙 「{rules['v11']}」")
+           + f" · v11 규칙 「{rules['v11'][:90]}」 · v12 규칙 「{rules['v12'][:90]}」")
     return d, txt
 
 
