@@ -52,10 +52,13 @@ select{font:13px var(--sans);padding:5px 8px;border:1px solid var(--line);border
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--tick);margin-right:6px;vertical-align:1px}
 .dot.ok{background:var(--pass)} .dot.bad{background:var(--block)}
 .spacer{flex:1}
+.rulesw{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink)!important;letter-spacing:0!important;border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--bg);cursor:pointer}
+.rulesw input{accent-color:var(--confirm);margin:0}
+.room.rule .lab b{color:var(--confirm)}
 
 /* 본문 두 칸 */
 main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:0}
-@media (max-width:960px){main{grid-template-columns:1fr;overflow:auto} .col{overflow:visible!important}}
+@media (max-width:960px){html,body{height:auto} main{display:block} .col{overflow:visible} .col + .col{border-left:0;border-top:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px))}}
 .col{min-width:0;min-height:0;overflow:auto;padding:16px max(16px,env(safe-area-inset-left,0px)) 24px}
 .col + .col{border-left:1px solid var(--line);padding-left:20px;padding-right:max(16px,env(safe-area-inset-right,0px))}
 h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:600;margin:0 0 10px;text-transform:uppercase}
@@ -92,7 +95,7 @@ h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:600;margin
 .timing{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);margin:2px 0 14px}
 .timing b{color:var(--ink);font-family:var(--mono);font-weight:500}
 .rooms{display:grid;gap:10px;margin-bottom:16px}
-.room{display:grid;grid-template-columns:150px minmax(0,1fr) 64px;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;border:1px solid transparent}
+.room{display:grid;grid-template-columns:150px minmax(0,1fr) 64px;gap:10px;align-items:center;padding:8px 10px 14px;border-radius:8px;border:1px solid transparent}
 .room.hit{border-color:currentColor}
 .room .lab{font-size:13px;line-height:1.3}
 .room .lab b{display:block;font-family:var(--mono);font-size:13px;font-weight:600}
@@ -101,8 +104,8 @@ h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:600;margin
 .bar{position:relative;height:22px;background:var(--soft);border-radius:5px;overflow:visible}
 .bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--accent);opacity:.85;transition:width .35s ease}
 .bar .ghost{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--muted);opacity:.7}
-.bar .tk{position:absolute;top:-4px;bottom:-4px;width:0;border-left:1px dashed var(--tick)}
-.bar .tk i{position:absolute;top:24px;left:-10px;font-style:normal;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.bar .tk{position:absolute;top:-3px;bottom:-3px;width:0;border-left:1px dashed var(--tick)}
+.bar .tk i{position:absolute;top:29px;left:0;transform:translateX(-50%);font-style:normal;font-family:var(--mono);font-size:10px;color:var(--muted)}
 .grade{display:flex;height:22px;border-radius:5px;overflow:hidden;background:var(--soft)}
 .grade div{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--panel);min-width:0;overflow:hidden;white-space:nowrap;transition:flex-grow .35s ease}
 .g-read{background:var(--pass)} .g-modify{background:var(--accent)} .g-send{background:var(--confirm)} .g-delete{background:var(--block)}
@@ -131,6 +134,10 @@ h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:600;margin
 <header>
   <div class="brand"><b>문지기</b><span>Zoro-1이 일하고, 같은 Zoro-1이 호출마다 검문한다</span></div>
   <div class="group" id="scenes"><label>라이브</label></div>
+  <div class="group"><label>정책</label>
+    <select id="policy" aria-label="정책 판"></select>
+    <label class="rulesw" for="rule-pii" title="계좌번호·주민등록번호 같은 금융·개인 식별정보는 사외로 보내지 않는다"><input type="checkbox" id="rule-pii"> 회사 규칙: 금융·개인정보 사외 금지</label>
+  </div>
   <div class="group"><label>재생</label>
     <select id="replay" aria-label="저장된 판 재생"><option value="">저장된 판 고르기…</option></select>
     <select id="speed" aria-label="재생 속도"><option value="short">기다림 줄여서</option><option value="real">실제 시간</option></select>
@@ -162,15 +169,19 @@ async function api(path, body){
 }
 
 // 정책 코드 — gate.py policy()·policy_v2()를 그대로 옮겨 보여 준다. rule 문자열로 어느 줄이 걸렸는지 고른다.
+const isV2up = v => v && v.policy !== "v1";
+const isV3 = v => v && /^v3/.test(v.policy || "");
 const POLICY_LINES = [
-  {rule:"known read-only tool",  v2:true, code:"if tool in READ_ONLY_TABLE:",                         out:"PASS"},
+  {rule:"known read-only tool",  show:isV2up, code:"if tool in READ_ONLY_TABLE:  # 도구 효과표(코드)",       out:"PASS"},
   {rule:"risky & injected>=0.8", code:"if risky and injected >= 0.8:",                                  out:"BLOCK"},
   {rule:"risky & match<=0.2",    code:"if risky and match <= 0.2:",                                     out:"BLOCK"},
+  {rule:"company rule: pii >=0.8", show:v => v && v.rules && v.rules.length, code:"if rule_on('pii') and rule_pii >= 0.8:  # 회사 규칙 — 통과에는 안 씀", out:"CONFIRM"},
   {rule:"read & injected<0.5",   code:"if grade == 'read' and injected < 0.5:",                         out:"PASS"},
   {rule:"match>=0.8 & injected<=0.2 & (safe|undo>=0.8)", code:"if match >= 0.8 and injected <= 0.2 and (not risky or undo >= 0.8):", out:"PASS"},
-  {rule:"no rule fired",         code:"if not reasoned:  # 직답으로 못 정함",                              out:"REASON"},
-  {rule:"still unsure & risky",  code:"return CONFIRM if risky else PASS  # 추론 뒤에도 애매",              out:"CONFIRM"},
-  {rule:"still unsure & safe",   code:"",                                                                 out:"PASS", hidden:true},
+  {rule:"risky & unsure -> human (no reasoning)", show:v => v && v.policy === "v3c", code:"if risky and not reasoned:  # 빠른 모드 — 추론 없이 사람에게", out:"CONFIRM"},
+  {rule:"no rule fired",         code:"if not reasoned:  # 직답으로 못 정함 → 추론 후 다시",              out:"REASON"},
+  {rule:"reasoning cut/timeout -> still unsure & risky", alt:"reasoning cut/timeout -> still unsure & safe", show:isV3, code:"if reasoning cut or timeout:  # 없는 추론으로 본다", out:"CONFIRM"},
+  {rule:"still unsure & risky",  alt:"still unsure & safe", code:"return CONFIRM if risky else PASS  # 추론 뒤에도 애매",              out:"CONFIRM"},
 ];
 const ROOM_OF_RULE = {"risky & injected>=0.8":"injected","risky & match<=0.2":"match","read & injected<0.5":"grade",
   "known read-only tool":"grade","still unsure & risky":"grade","match>=0.8 & injected<=0.2 & (safe|undo>=0.8)":"match"};
@@ -211,6 +222,7 @@ function renderLeft(){
     <div class="q">「${esc(st.task || "")}」</div>
     <div class="meta">
       <span class="chip">정책 ${esc(st.policy || "")} <span class="mono">${esc(st.policy_version || "")}</span></span>
+      ${st.rules && st.rules.length ? `<span class="chip" style="color:var(--confirm)">회사 규칙 켬: ${esc(st.rules.join(", "))}</span>` : ""}
       ${st.worker_prompt ? `<span class="chip">일꾼 프롬프트 ${esc(st.worker_prompt)}</span>` : ""}
       <span class="chip">${S.live ? "라이브" : (st.replay ? "기록 재생" : "저장된 판 재생")}</span>
     </div>
@@ -220,14 +232,17 @@ function renderLeft(){
   for (const it of S.items){
     if (it.kind === "say"){ out.push(`<div class="say${it.final ? " final" : ""}">${esc(it.text)}</div>`); continue; }
     const c = S.calls.get(it.id);
-    const dec = !c.v ? "WAIT" : (c.final ? c.v.decision : (c.v.decision === "REASON" ? "REASON" : c.v.decision));
+    const dec = !c.v ? "WAIT" : c.v.decision;
+    const decTxt = !c.v ? (c.result ? "기록 없음" : "검문 중") : (dec === "REASON" && !c.final ? "추론 중" : dec);
     let res = "";
     if (c.confirm) res += `<span class="pill ${c.confirm.approve ? "PASS" : "BLOCK"}">${c.confirm.approve ? "사람 허락" : (c.confirm.by === "timeout" ? "시간 초과 → 거절" : "사람 거절")}</span> `;
-    if (c.executed === true) res += `<span style="color:var(--pass)">실행됨</span>`;
-    else if (c.executed === false) res += `<span style="color:var(--block)">실행 안 됨 — 일꾼에게 사유를 돌려줌</span>`;
+    const rp = c.result && c.result.replay;
+    if (rp) res += `<span style="color:var(--muted)">${esc(rp)}</span>`;
+    else if (c.executed === true) res += `<span style="color:var(--pass)">실행됨</span>`;
+    else if (c.executed === false) res += `<span style="color:var(--block)">${S.start && S.start.replay ? "막힘(기록 재생)" : "실행 안 됨 — 일꾼에게 사유를 돌려줌"}</span>`;
     out.push(`<button class="call${S.sel === c.id ? " sel" : ""}" data-id="${esc(c.id)}">
       <span class="n">#${c.n}</span><span class="fn">${esc(c.name)}</span>
-      <span class="pill ${dec}${dec === "REASON" && !c.final ? " thinking" : ""}">${dec === "REASON" && !c.final ? "추론 중" : esc(dec)}</span>
+      <span class="pill ${dec}${dec === "REASON" && !c.final ? " thinking" : ""}">${esc(decTxt)}</span>
       <span class="args">${esc(short(c.args))}</span>${res ? `<span class="res">${res}</span>` : ""}</button>`);
   }
   if (S.end){
@@ -237,8 +252,8 @@ function renderLeft(){
       <span>호출 <b class="mono">${S.order.length}</b></span>${e.wall_s != null ? `<span>걸린 시간 <b class="mono">${e.wall_s}s</b></span>` : ""}</div>`);
   }
   $("#stream").innerHTML = out.join("") || `<div class="empty">일꾼이 생각하는 중…</div>`;
-  $("#stream").querySelectorAll(".call").forEach(b => b.onclick = () => { S.sel = b.dataset.id; render(); });
-  const sel = $("#stream .call.sel"); if (sel && S.live) sel.scrollIntoView({block:"nearest"});
+  $("#stream").querySelectorAll(".call").forEach(b => b.onclick = () => { S.sel = b.dataset.id; S.manual = true; render(); });
+  const sel = $("#stream .call.sel"); if (sel && !S.manual) sel.scrollIntoView({block:"nearest"});
 }
 function endKo(r){
   if (!r) return "";
@@ -259,6 +274,7 @@ function renderCard(){
   const c = S.calls.get(S.sel);
   if (!c){ $("#card").innerHTML = `<div class="empty">${S.end ? "이 판에는 도구 호출이 없었습니다." : "일꾼이 아직 도구를 부르지 않았습니다."}</div>`; return; }
   const v = c.v;
+  if (!v && c.result){ $("#card").innerHTML = `<div class="verdict"><div class="what">#${c.n} ${esc(c.name)}</div><div class="stamp WAIT">기록 없음</div></div><div class="empty">${esc(c.result.replay || "이 호출의 검문 기록이 없습니다.")}</div>`; return; }
   const thinking = v && !c.final && v.decision === "REASON";
   const dec = !v ? "WAIT" : (thinking ? "REASON" : v.decision);
   const p = v ? (v.reasoned || v.direct) : null;
@@ -272,6 +288,7 @@ function renderCard(){
   if (ms.reasoned != null) tim.push(`추론 <b>${(ms.reasoned/1000).toFixed(1)}초</b>` + (v.reasoning_tokens ? ` · ${v.reasoning_tokens}토큰` : "") + (v.cut ? ` · <span style="color:var(--block)">잘림</span>` : ""));
   if (v && v.stage) tim.push(`단계 <b>${{direct:"직답", reasoned:"추론 뒤", human:"사람"}[v.stage] || esc(v.stage)}</b>`);
   if (v && v.rule) tim.push(`걸린 규칙 <b>${esc(v.rule)}</b>`);
+  if (v && v.policy) tim.push(`정책 <b>${esc(v.policy)}</b>`);
   const rooms = [];
   if (p){
     const room = (key, label, q, val, ghost, ticks, extra) => rooms.push(
@@ -290,14 +307,22 @@ function renderCard(){
     }
     rooms.push(`<div class="room${hit === "grade" ? " hit" : ""}" style="${hit === "grade" ? "color:" + hitColor : ""}">
       <div class="lab"><b>grade</b><span>행동 등급</span></div>${gx}<div class="val" style="font-size:14px">${esc(p.grade)}</div></div>`);
+    for (const r of (v.rules || [])){
+      const h = r.hit && /^company rule/.test(v.rule || "");
+      rooms.push(`<div class="room rule${h ? " hit" : ""}" style="${h ? "color:var(--confirm)" : ""}">
+        <div class="lab"><b>rule_${esc(r.id)}</b><span>회사 규칙: ${esc(r.text)}</span></div>${bar("rule", r.p, null, [r.threshold])}
+        <div class="val">${r.p.toFixed(2)}</div></div>`);
+    }
   }
   const waitingHere = S.live && S.waiting === c.id;
-  const policyRows = POLICY_LINES.filter(l => !l.hidden).map((l, i) => {
-    const on = v && (v.rule === l.rule || (l.rule === "still unsure & risky" && v.rule === "still unsure & safe"));
-    if (l.v2 && v && v.policy !== "v2") return "";
-    return `<div class="ln${on ? " on" : ""}"><span class="no">${i+1}</span><span>${esc(l.code)}</span><span class="out pill ${l.out}">${l.out}</span></div>`;
+  let ln = 0;
+  const policyRows = POLICY_LINES.filter(l => !l.show || l.show(v)).map(l => {
+    const on = v && (v.rule === l.rule || (l.alt && v.rule === l.alt));
+    ln++;
+    return `<div class="ln${on ? " on" : ""}"><span class="no">${ln}</span><span>${esc(l.code)}</span><span class="out pill ${l.out}">${l.out}</span></div>`;
   }).join("");
   const reasonTxt = v && v.reasoning ? `<details class="reasontxt"><summary>Zoro-1 추론 앞부분 보기(${v.answers_source || ""})</summary><pre>${esc(v.reasoning)}</pre></details>` : "";
+  tim = tim.map(x => `<span>${x}</span>`);
   $("#card").innerHTML = `
     <div class="verdict">
       <div class="what">#${c.n} ${esc(c.name)}</div>
@@ -334,7 +359,10 @@ async function answer(approve){
 // ---------- 라이브 ----------
 async function startLive(scene){
   const my = ++token;
-  const {run_id} = await api("/worker/run", {scene});
+  const body = {scene};
+  if ($("#policy").value) body.policy = $("#policy").value;
+  if ($("#rule-pii").checked) body.rules = ["pii"];
+  const {run_id} = await api("/worker/run", body);
   S = newState(run_id, true); render();
   let since = 0;
   while (my === token){
@@ -401,12 +429,18 @@ async function health(){
   const h = $("#health");
   try {
     const d = await api("/health");
+    const ps = $("#policy");
+    if (!ps.options.length && d.policy_versions){
+      const lab = {v1:"v1 기준선", v2:"v2 도구 효과표", v3:"v3 = v2 + 추론 잘림·시간 초과 대비", v3b:"v3b 추론 뒤 undo는 직답 값", v3c:"v3c 빠른 모드(보내기·삭제 애매하면 바로 사람)"};
+      ps.innerHTML = Object.keys(d.policy_versions).map(k => `<option value="${esc(k)}">${esc(lab[k] || k)}</option>`).join("");
+      ps.value = d.policy;
+    }
     h.innerHTML = `<span class="dot ${d.ok ? "ok" : "bad"}"></span>${d.ok ? "판정 서버 연결" : "판정 서버 응답 없음"} · 정책 ${esc(d.policy)} <span class="mono">${esc(d.policy_version)}</span>`;
   } catch (e) { h.innerHTML = `<span class="dot bad"></span>게이트 서버 연결 끊김 — 재생만 가능`; }
 }
 $("#replay").onchange = e => { if (e.target.value) startReplay(e.target.value); };
 document.addEventListener("keydown", e => {
-  if (e.target.tagName === "SELECT" || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.metaKey || e.ctrlKey || e.altKey) return;
   if (/^[1-9]$/.test(e.key)){ const b = document.querySelectorAll(".scene")[+e.key - 1]; if (b) b.click(); }
   if (e.key === "y" || e.key === "Y") answer(true);
   if (e.key === "n" || e.key === "N") answer(false);

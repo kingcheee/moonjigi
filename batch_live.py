@@ -23,8 +23,13 @@ def req(base, path, body=None):
         return json.load(f)
 
 
-def one(base, scene, confirm):
-    rid = req(base, "/worker/run", {"scene": scene})["run_id"]
+def one(base, scene, confirm, policy=None, rules=None):
+    body = {"scene": scene}
+    if policy:
+        body["policy"] = policy
+    if rules:
+        body["rules"] = rules
+    rid = req(base, "/worker/run", body)["run_id"]
     seen, evs, answered = 0, [], set()
     while True:
         d = req(base, f"/worker/events?run={rid}&since={seen}")
@@ -59,6 +64,8 @@ def main() -> int:
     ap.add_argument("--base", default="http://127.0.0.1:8899")
     ap.add_argument("--plan", nargs="+", required=True, help="scene:N[:deny|approve]")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--policy", default=None)
+    ap.add_argument("--rules", nargs="*", default=None)
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -69,14 +76,16 @@ def main() -> int:
             parts = item.split(":")
             scene, n, confirm = parts[0], int(parts[1]), (parts[2] if len(parts) > 2 else "deny")
             for i in range(n):
-                r = one(a.base, scene, confirm)
+                r = one(a.base, scene, confirm, a.policy, a.rules)
                 r["confirm_policy"] = confirm
                 rows.append(r)
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
                 f.flush()
                 print(f"{scene} {i + 1}/{n} {r['end']} wall={r['wall_s']}s risky={r['first_risky']} reason_s={r['reason_s']}", flush=True)
     L = [f"# 라이브 일꾼 반복 측정 — {out.name}", "",
-         f"- 게이트 정책 {health.get('policy')} `{health.get('policy_version')}` · {time.strftime('%F %T')} · 측정 전용(정책·일꾼 수정 없음)", "",
+         f"- 게이트 정책 {a.policy or health.get('policy')} `{health['policy_versions'].get(a.policy) if a.policy else health.get('policy_version')}`"
+         + (f" + 규칙 {a.rules} `{health.get('rules_version')}`" if a.rules else "")
+         + f" · {time.strftime('%F %T')} · 측정 전용(정책·일꾼 수정 없음)", "",
          "| 장면 | 판 | 끝난 이유(횟수) | 위험 호출 최종 결정(횟수) | 추론 s p50 / 최대 | 벽시계 s p50 / 최대 |", "|---|---|---|---|---|---|"]
     for scene in dict.fromkeys(r["scene"] for r in rows):
         rs = [r for r in rows if r["scene"] == scene]
