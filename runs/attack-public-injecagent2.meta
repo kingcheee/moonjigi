@@ -1,0 +1,4 @@
+server=naver-l40s (211.233.192.32) judge=127.0.0.1:30001
+scenarios=public-injecagent2.json sha256=5c0e2c87c32cfc18 repeat=3 pii=yes gen=yes
+policy={'v1': '382259fd0b21', 'v2': 'e8c958fb2898', 'v3': '298d016205cd', 'v3b': '060839ee0c12', 'v3c': '44a950c08114'} d9b8d2e8c13c
+start=2026-11-20 01:10:34
