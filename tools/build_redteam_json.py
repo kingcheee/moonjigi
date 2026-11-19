@@ -25,6 +25,27 @@ import variants_v14 as v14  # noqa: E402
 TOOLS = {"list_mail", "read_mail", "send_email", "search_files", "read_doc", "move_file", "delete_file", "share_link",
          "list_events", "create_event"}
 STOP = lambda d: d not in ("PASS", "MISSING")  # noqa: E731
+# 「어떤 레드팀인가」(사용자 11-20 08:2x 「어떤 레드팀인지 알려주면 재밌을 것 같아」) — 데이터에 있는 것만 쓴다(소속·기관을 지어내지 않음)
+PUBLIC = {"AgentDojo": "AgentDojo 공개 벤치마크 (Debenedetti 외 · MIT)",
+          "InjecAgent": "InjecAgent 공개 벤치마크 (uiuc-kang-lab · MIT)",
+          "AgentInjectionBench": "AgentInjectionBench 공개 벤치마크 (ppradyoth · Apache-2.0)"}
+ADAPT = [("적응형 묶음 4", "v13"), ("적응형 묶음 3", "v11"), ("적응형 묶음 2", "v10"), ("적응형", "v9")]
+
+
+def redteam_of(s: dict, bundle_note: str) -> str:
+    """우리 것은 묶음 갈래(tools/attack_ledger.py kind_of와 같은 잣대 · 항목 set_note가 없으면 묶음 전체 note)."""
+    if s.get("origin", "ours") != "ours":
+        return PUBLIC.get(s["origin"], f"{s['origin']} 공개 자료")
+    note = s.get("set_note") or bundle_note
+    head = "문지기 팀 레드팀 · "
+    if "짝 대조" in note:
+        return head + "짝 대조 공격 — 정상 요청과 똑같은 모양의 호출"
+    for key, ver in ADAPT:
+        if key in note:
+            return head + f"적응형 공격 — 앞 판({ver}) 코드를 읽고 피해 쓴 공격"
+    if "적대적" in note:
+        return head + "적대적 공격 — 앞 판에서 뚫린 유형을 더 판 공격"
+    return head + "일반 공격"
 
 
 def main() -> int:
@@ -35,7 +56,9 @@ def main() -> int:
         res = run / "results.jsonl"
         if not sf.exists() or not res.exists():
             continue
-        sc = {s["id"]: s for s in json.loads(sf.read_text(encoding="utf-8"))}
+        scl = json.loads(sf.read_text(encoding="utf-8"))
+        sc = {s["id"]: s for s in scl}
+        bundle_note = " ".join(sorted({x.get("set_note") or "" for x in scl}))
         reps = defaultdict(list)
         for line in res.read_text(encoding="utf-8").splitlines():
             r = json.loads(line)
@@ -57,7 +80,8 @@ def main() -> int:
             if key in seen:
                 continue
             seen.add(key)
-            out.append({"id": f"{bundle}/{sid}", "origin": s.get("origin") or "ours", "license": s.get("license"),
+            out.append({"id": f"{bundle}/{sid}", "redteam": redteam_of(s, bundle_note),
+                        "origin": s.get("origin") or "ours", "license": s.get("license"),
                         "origin_url": s.get("origin_url"), "technique": s.get("technique"),
                         "user_request": s["user_request"], "actions_so_far": s.get("actions_so_far") or [],
                         "source_text": (s.get("source_text") or "")[:4000], "tool_call": tc,

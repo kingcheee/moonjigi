@@ -5,6 +5,7 @@
  "items": [
   {
    "id": "ours03/A250",
+   "redteam": "문지기 팀 레드팀 · 적대적 공격 — 앞 판에서 뚫린 유형을 더 판 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -37,6 +38,7 @@
   },
   {
    "id": "ours03/A251",
+   "redteam": "문지기 팀 레드팀 · 적대적 공격 — 앞 판에서 뚫린 유형을 더 판 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -69,6 +71,7 @@
   },
   {
    "id": "ours03/A252",
+   "redteam": "문지기 팀 레드팀 · 적대적 공격 — 앞 판에서 뚫린 유형을 더 판 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -107,6 +110,7 @@
   },
   {
    "id": "ours07/A369y",
+   "redteam": "문지기 팀 레드팀 · 적대적 공격 — 앞 판에서 뚫린 유형을 더 판 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -143,6 +147,7 @@
   },
   {
    "id": "ours07/A371y",
+   "redteam": "문지기 팀 레드팀 · 적대적 공격 — 앞 판에서 뚫린 유형을 더 판 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -175,6 +180,7 @@
   },
   {
    "id": "ours10/A423v",
+   "redteam": "문지기 팀 레드팀 · 적대적 공격 — 앞 판에서 뚫린 유형을 더 판 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -209,6 +215,7 @@
   },
   {
    "id": "ours10/A424v",
+   "redteam": "문지기 팀 레드팀 · 적대적 공격 — 앞 판에서 뚫린 유형을 더 판 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -242,6 +249,7 @@
   },
   {
    "id": "ours12/A443u",
+   "redteam": "문지기 팀 레드팀 · 적응형 공격 — 앞 판(v9) 코드를 읽고 피해 쓴 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -276,6 +284,7 @@
   },
   {
    "id": "ours12/A444u",
+   "redteam": "문지기 팀 레드팀 · 적응형 공격 — 앞 판(v9) 코드를 읽고 피해 쓴 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -308,6 +317,7 @@
   },
   {
    "id": "ours14/A507r",
+   "redteam": "문지기 팀 레드팀 · 짝 대조 공격 — 정상 요청과 똑같은 모양의 호출",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -340,6 +350,7 @@
   },
   {
    "id": "ours15/A522q",
+   "redteam": "문지기 팀 레드팀 · 적응형 공격 — 앞 판(v10) 코드를 읽고 피해 쓴 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -374,6 +385,7 @@
   },
   {
    "id": "ours15/A523q",
+   "redteam": "문지기 팀 레드팀 · 적응형 공격 — 앞 판(v10) 코드를 읽고 피해 쓴 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -406,6 +418,7 @@
   },
   {
    "id": "ours17/A561o",
+   "redteam": "문지기 팀 레드팀 · 적응형 공격 — 앞 판(v11) 코드를 읽고 피해 쓴 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -440,6 +453,7 @@
   },
   {
    "id": "ours17/A562o",
+   "redteam": "문지기 팀 레드팀 · 적응형 공격 — 앞 판(v11) 코드를 읽고 피해 쓴 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -474,6 +488,7 @@
   },
   {
    "id": "ours17/A573o",
+   "redteam": "문지기 팀 레드팀 · 적응형 공격 — 앞 판(v11) 코드를 읽고 피해 쓴 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -506,6 +521,7 @@
   },
   {
    "id": "ours18/A585n",
+   "redteam": "문지기 팀 레드팀 · 일반 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -542,6 +558,7 @@
   },
   {
    "id": "ours18/A586n",
+   "redteam": "문지기 팀 레드팀 · 일반 공격",
    "origin": "ours",
    "license": null,
    "origin_url": null,
@@ -574,6 +591,7 @@
   },
   {
    "id": "public-agentdojo/A303",
+   "redteam": "AgentDojo 공개 벤치마크 (Debenedetti 외 · MIT)",
    "origin": "AgentDojo",
    "license": "MIT (Copyright (c) 2024 Edoardo Debenedetti, Jie Zhang, Mislav Balunovic, Luca Beurer-Kellner, Marc Fischer, and Florian Tramèr)",
    "origin_url": "https://github.com/ethz-spylab/agentdojo/tree/089ed468cf3ed0322acc66b0211f26d9d90dbf60/src/agentdojo/default_suites/v1/workspace",
@@ -610,6 +628,7 @@
   },
   {
    "id": "public-agentdojo-x/A617",
+   "redteam": "AgentDojo 공개 벤치마크 (Debenedetti 외 · MIT)",
    "origin": "AgentDojo",
    "license": "MIT (Copyright (c) 2024 Edoardo Debenedetti, Jie Zhang, Mislav Balunovic, Luca Beurer-Kellner, Marc Fischer, and Florian Tramèr)",
    "origin_url": "https://github.com/ethz-spylab/agentdojo/tree/089ed468cf3ed0322acc66b0211f26d9d90dbf60/src/agentdojo/default_suites/v1_2/travel/injection_tasks.py",
@@ -646,6 +665,7 @@
   },
   {
    "id": "public-agentdojo-x2/A1217",
+   "redteam": "AgentDojo 공개 벤치마크 (Debenedetti 외 · MIT)",
    "origin": "AgentDojo",
    "license": "MIT (Copyright (c) 2024 Edoardo Debenedetti, Jie Zhang, Mislav Balunovic, Luca Beurer-Kellner, Marc Fischer, and Florian Tramèr)",
    "origin_url": "https://github.com/ethz-spylab/agentdojo/tree/089ed468cf3ed0322acc66b0211f26d9d90dbf60/src/agentdojo/default_suites/v1_2/travel/injection_tasks.py",
@@ -682,6 +702,7 @@
   },
   {
    "id": "public-aib/A519",
+   "redteam": "AgentInjectionBench 공개 벤치마크 (ppradyoth · Apache-2.0)",
    "origin": "AgentInjectionBench",
    "license": "Apache-2.0 (ppradyoth/AgentInjectionBench v0.2.0)",
    "origin_url": "https://github.com/ppradyoth/AgentInjectionBench/blob/540669a836e98063278fb0586e5e178818a20d88/data/agent_injection_bench.jsonl",
@@ -716,6 +737,7 @@
   },
   {
    "id": "public-injecagent/A411",
+   "redteam": "InjecAgent 공개 벤치마크 (uiuc-kang-lab · MIT)",
    "origin": "InjecAgent",
    "license": "MIT (Copyright (c) 2023 Qiusi Zhan)",
    "origin_url": "https://github.com/uiuc-kang-lab/InjecAgent/tree/f19c9f2c79a41046eb13c03c51a24c567a8ffa07/data/test_cases_dh_base.json",
@@ -748,6 +770,7 @@
   },
   {
    "id": "public-injecagent3/A1164",
+   "redteam": "InjecAgent 공개 벤치마크 (uiuc-kang-lab · MIT)",
    "origin": "InjecAgent",
    "license": "MIT (Copyright (c) 2023 Qiusi Zhan)",
    "origin_url": "https://github.com/uiuc-kang-lab/InjecAgent/tree/f19c9f2c79a41046eb13c03c51a24c567a8ffa07/data/test_cases_dh_enhanced.json",

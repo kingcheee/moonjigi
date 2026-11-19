@@ -78,7 +78,7 @@
               <button type="button" class="b quiet sm" id="reset-try">초기화</button>
             </div>
             <p class="hint">판정: v14 — 밤새 공격 546건을 막은 판 · 직접 뚫어 보세요 · 모든 시도는 기록됩니다</p>
-            <p class="hint" id="redteam-note" hidden></p>
+            <p class="lead" id="redteam-note" hidden></p>
           </div></section>
           <section class="thread" id="thread"><div class="col">
             <form id="form">
@@ -214,22 +214,24 @@ function resetForm(){
 }
 // 「강한 공격 던지기」 — web/redteam.json(tools/build_redteam_json.py가 밤새 측정 기록에서 뽑음)에서 무작위 한 건
 let RED = null, redLast = -1;
-function redNote(text){ const el = $("#redteam-note"); el.textContent = text; el.hidden = !text; }
+function redNote(html){ const el = $("#redteam-note"); el.innerHTML = html; el.hidden = !html; }       // html은 esc()로 만든 것만
 async function redteam(){
   try {
     if (!RED){ const r = await fetch("redteam.json", {cache:"no-store"}); if (!r.ok) throw new Error(r.status); RED = (await r.json()).items || []; }
-  } catch (e) { return redNote("공격 목록을 불러오지 못했습니다"); }
-  if (!RED.length) return redNote("공격 목록이 비어 있습니다");
+  } catch (e) { return redNote(esc("공격 목록을 불러오지 못했습니다")); }
+  if (!RED.length) return redNote(esc("공격 목록이 비어 있습니다"));
   let i = Math.floor(Math.random() * RED.length);
   if (RED.length > 1 && i === redLast) i = (i + 1) % RED.length;
   redLast = i;
   const x = RED[i], tc = x.tool_call || {};
-  if (!FIELDS[tc.name]) return redNote("이 화면에 없는 도구라 건너뜁니다");
+  if (!FIELDS[tc.name]) return redNote(esc("이 화면에 없는 도구라 건너뜁니다"));
   T.preset = null;
   $("#req").value = x.user_request || ""; $("#tool").value = tc.name; renderFields(tc.name, tc.args || {}, true);
   $("#actions").value = (x.actions_so_far || []).join("\n"); $("#source").value = x.source_text || "";
-  const src = x.origin === "ours" ? "우리 팀 적응형 공격" : `공개 자료 ${x.origin}`;
-  redNote(`강한 공격 ${i + 1}/${RED.length} · ${src} · ${x.technique || ""} · 밤새 측정에서 예전 판(v3b)을 통과한 공격`);
+  const m = x.measured || {}, n = (m.v3b || []).filter(d => d === "PASS" || d === "MISSING").length, reps = m.reps || (m.v3b || []).length;
+  const link = /^https:\/\//.test(x.origin_url || "") ? ` · <a href="${esc(x.origin_url)}" target="_blank" rel="noopener">원본</a>` : "";
+  redNote(`<b>${esc(x.redteam || x.origin || "")}</b> · ${esc(x.technique || "")}<br>`
+    + esc(`밤새 측정: 예전 판 v3b ${reps}번 중 ${n}번 통과 · v14 ${reps}번 모두 멈춤 · 강한 공격 ${i + 1}/${RED.length}`) + link);
   renderPresets(); clearResult(); refresh();
 }
 function clearResult(){ T.last = null; T.inspect = null; $("#ruling").innerHTML = ""; renderInside(); renderHist(); }
