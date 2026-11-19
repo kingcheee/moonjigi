@@ -19,7 +19,8 @@ assert sorted(flat) == sorted(rows) == list(range(1, len(rows) + 1)), f'표 {sor
 body = "\n>\n".join("> " + " ".join(rows[i][0] for i in b) for b in beats)
 start = '<!-- 이어읽기: 표에서 자동 생성 — 손으로 고치지 말고 표를 고친 뒤 다시 만든다 -->\n'
 end = '\n<!-- /이어읽기 -->'
-new = re.sub(re.escape(start) + r'.*?' + re.escape(end), lambda m: start + body + end, s, flags=re.S)
+new, n = re.subn(r'(<!-- 이어읽기:[^\n]*-->\n).*?(<!-- /이어읽기 -->)', lambda m: m.group(1) + body + '\n' + m.group(2), s, flags=re.S)
+assert n == 1, '이어읽기 구간 표시가 없다'
 open(p, 'w', encoding='utf-8').write(new)
 title = re.search(r'<!-- 읽는판 제목: (.+?) -->', s)
 out = "# " + (title.group(1) if title else "읽는 판") + "\n\n" + "\n\n".join("\n".join(rows[i][0] for i in b) for b in beats) + "\n"
