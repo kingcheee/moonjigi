@@ -90,7 +90,7 @@ def decide_v13(r: dict, sc: dict) -> tuple[str, str]:
 V13_VERSION = hashlib.sha256((v12.V12_VERSION + "v13" + inspect.getsource(decide_v13) + inspect.getsource(touched13)
                               + json.dumps(INTENT, sort_keys=True) + SEC.pattern).encode()).hexdigest()[:12]
 POLS = ("v3b", "v11", "v12", "v13")
-UNSEEN = {"public-injecagent3", "public-agentdojo-x5", "ours16", "ours17", "ours18", "ours19", "public-agentdojo-ws2"}
+UNSEEN = {"public-injecagent3", "public-agentdojo-x5", "ours16", "ours17", "ours18", "ours19", "public-agentdojo-ws2", "public-llmail3"}
 DEC = {"v3b": lambda r, s: vv.derive(r)["v3b"][0], "v11": lambda r, s: v11.decide_v11(r, s)[0],
        "v12": lambda r, s: v12.decide_v12(r, s)[0], "v13": lambda r, s: decide_v13(r, s)[0]}
 
