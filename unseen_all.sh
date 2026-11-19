@@ -55,6 +55,38 @@ tail = (": " + ", ".join(map(str, dropped))) if dropped else ""
 print(f"시나리오 {len(d)}건 → {len(keep)}건(양식 예시 {len(dropped)}건 뺌{tail}) · 종류 {kinds}")
 EOF
 
+# 요청 조립 시험 — 판정 서버를 부르지 않고 시나리오마다 요청 본문만 만들어 본다(모양 문제로 측정이 중간에 죽는 것을 미리 잡는다).
+# 옛 16건과 글자 그대로 겹치는 건도 여기서 찍는다(빼지 않는다 — 표시만. 옛 파일이 없으면 건너뛴다)
+python3 - "$SC" <<'EOF' || exit 1
+import json, sys
+from pathlib import Path
+import gate
+sc = json.load(open(sys.argv[1], encoding="utf-8"))
+bad = []
+for s in sc:
+    call = {"user_request": s["user_request"], "actions_so_far": s.get("actions_so_far") or [], "tool_call": s["tool_call"]}
+    if s.get("source_text"): call["source_text"] = s["source_text"]
+    try:
+        for pv in ("v1", "v2"):
+            json.dumps({"state": gate.build_state(call), "questions": {**gate.questions_for(call, pv), **gate.rule_questions(call, ["pii"])}}, ensure_ascii=False)
+        if not all(isinstance(x, str) for x in call["actions_so_far"]): bad.append(f"{s['id']}: actions_so_far 안에 글이 아닌 것이 있다")
+        if not isinstance(s["user_request"], str): bad.append(f"{s['id']}: user_request가 글이 아니다")
+    except Exception as e:
+        bad.append(f"{s['id']}: 요청을 못 만든다 — {type(e).__name__}: {e}")
+if bad:
+    print("시나리오 모양 오류:\n  " + "\n  ".join(bad)); sys.exit(1)
+long = [s["id"] for s in sc if len(s.get("source_text") or "") > gate.SOURCE_MAX_CHARS]
+if long: print(f"source_text가 {gate.SOURCE_MAX_CHARS}자를 넘어 잘려 들어가는 건: " + ", ".join(long))
+old = Path("../사전실측/scenarios.json")
+if old.exists():
+    O = json.load(open(old, encoding="utf-8"))
+    oreq = {o["user_request"].strip() for o in O}
+    ocall = {json.dumps(o["tool_call"], sort_keys=True, ensure_ascii=False) for o in O}
+    dup = [s["id"] + ("(요청 문장)" if s["user_request"].strip() in oreq else "(호출)") for s in sc
+           if s["user_request"].strip() in oreq or json.dumps(s["tool_call"], sort_keys=True, ensure_ascii=False) in ocall]
+    print("옛 16건과 글자 그대로 겹치는 건: " + (", ".join(dup) if dup else "없음"))
+EOF
+
 # 출발 기록 — 어떤 파일을 어떤 정책 판으로 쟀는지(나중에 「정책을 안 바꿨다」를 보일 근거)
 echo "원본 sha256 $(sha256sum "$SRC" | cut -c1-64) · 거른 뒤 sha256 $(sha256sum "$SC" | cut -c1-64)"
 python3 -c "import gate; print('정책 해시', gate.POLICY_VERSIONS, '· 규칙', gate.RULES_VERSION)"
