@@ -1,0 +1,92 @@
+# 문지기
+
+AI 에이전트가 도구를 부르기 직전에 한 문 앞에서 거른다. 실수로 하는 일도, 속아서 하는 일도, 회사 규칙 밖의 일도 같은 문을 지난다.
+
+트릴리온 에이전트 AI 해커톤 2026 · Track 1 (Zoro-1 Arena) · 팀 「거북이정신」(김지우 · 박규연)
+
+## 바로 보기
+
+| | |
+|---|---|
+| 데모 | <http://211.233.192.32:8899/> — 2026-11-20 시상 때까지 열어 둔다 |
+| 실행 로그 3종 | [`logs/`](logs/README.md) — [통과](logs/1-pass.md) · [차단](logs/2-block.md) · [사람 확인과 문지기 끊김](logs/3-confirm-and-gate-down.md) |
+| 측정 결과 | [`00-M0M1-결과.md`](00-M0M1-결과.md) |
+| 다른 에이전트에 끼우기 | [`mcp/README.md`](mcp/README.md) |
+
+<img src="docs/qr-demo.png" alt="데모 QR" width="180">
+
+## 무엇을 하나
+
+에이전트에게 「고객 문의 메일에 답장해줘」라고만 했는데 고객 메일 27통을 지우려 든다. 「이 웹페이지 요약해줘」라고 했는데 페이지에 숨은 글씨대로 폴더를 비우려 든다. 둘 다 Zoro-1을 일꾼으로 돌리다 나온 호출이고, [`logs/2-block.md`](logs/2-block.md)에 그대로 있다.
+
+문지기는 에이전트가 도구를 부를 때마다 그 호출을 Zoro-1에게 묻는다. Zoro-1은 확률로 답하고, 그 확률을 결정으로 바꾸는 것은 코드다.
+
+```
+사용자 요청 ─▶ 일꾼 ─ 도구 호출 ─▶ 문지기(Zoro-1) ─ 확률 ─▶ 정책(코드) ─▶ 통과 / 추론 후 재판정 / 사람 확인 / 차단
+```
+
+| 질문 | 묻는 것 |
+|---|---|
+| `match` | 사용자가 처음 시킨 일의 범위 안인가 |
+| `grade` | 읽기 / 수정 / 외부 전송 / 삭제 중 무엇인가 |
+| `injected` | 사용자 말이 아니라 메일·문서·웹 속 지시에서 나온 호출인가 |
+| `undo` | 결과를 되돌릴 수 있는가 |
+| 회사 규칙 한 줄 (켜고 끈다) | 예: 「계좌번호·주민등록번호 같은 금융·개인 식별정보는 사외로 보내지 않는다」 |
+
+- 질문 넷은 한 요청으로 가지만 서로의 답을 보지 못하고, 답은 정해 둔 선택지 밖으로 나가지 못한다.
+- 결정은 [`gate.py`](gate.py)의 정책 함수가 낸다. 확률이 같으면 결정도 같다. 정책을 고치면 정책 해시가 바뀌고, 판 기록마다 그 해시가 남는다.
+- 일하는 모델과 검문하는 모델은 같은 Zoro-1 서버다. `/v1/chat/completions`로 일하고 `/v1/systemone`으로 검문한다.
+- 일꾼이 Zoro-1이 아니어도 된다. 문지기를 MCP 서버로 세우면 다른 에이전트의 도구 호출도 같은 문을 지난다([`mcp/`](mcp/README.md)).
+- MCP 구성에서 판정 서버가 응답하지 않으면 읽기 전용 도구만 실행하고 나머지는 보류한다([`logs/3-confirm-and-gate-down.md`](logs/3-confirm-and-gate-down.md)의 3-3).
+
+대회가 요구한 「System 1 판단(빠른 진단·라우팅·검증)에 Zoro-1 사용」은 문지기의 판정 그 자체다. 질문 넷이 진단이고, 네 갈래 결정이 라우팅이고, 도구 호출마다 하는 검문이 검증이다.
+
+## 저장소 구성
+
+| 경로 | 내용 |
+|---|---|
+| `gate.py` | 질문 · 확률을 결정으로 바꾸는 정책(`v1`～`v3c`) · 회사 규칙 |
+| `server.py` | 문지기 HTTP 서버. 표준 라이브러리만 쓴다. API 목록은 파일 맨 위에 있다 |
+| `worker.py` | Zoro-1 일꾼. 도구는 가짜 메일함·파일·일정(`scenes.json`)에서만 돈다 |
+| `web/` | 데모 화면 |
+| `mcp/` | 문지기 MCP 서버와 다른 에이전트(pi)로 돌린 판 |
+| `runs-live/` | 판 기록 원본(jsonl). 데모 화면의 재생이 이 파일을 읽는다 |
+| `logs/` | 실행 로그 3종. `python3 tools/render_logs.py`로 `runs-live/`에서 다시 만든다 |
+| `runs/` · `eval.py` · `unseen_all.sh` | 측정 스크립트와 결과 |
+| `deploy/` | 공개 데모 서버에 올리는 스크립트 |
+
+## 실행
+
+판정 서버(GPU)와 문지기 서버 둘을 띄운다.
+
+```bash
+# 1. 판정 서버 — Zoro-1 (접근 승인이 필요한 모델이라 Hugging Face 토큰이 있어야 한다)
+git clone https://github.com/trillion-labs/trida-stack
+git -C trida-stack checkout 0ddcf516e4          # 우리가 쓴 커밋
+pip install "sglang>=0.5.22" fastapi uvicorn huggingface_hub
+hf download trillionlabs/Zoro-1
+cd trida-stack/inference/zoro-1 && python serve.py --mode decide --port 30001
+
+# 2. 문지기 서버 — 이 저장소
+python3 server.py --upstream http://127.0.0.1:30001 --port 8899 --policy v3
+```
+
+브라우저로 <http://127.0.0.1:8899/>을 연다. 판정 서버 없이도 저장된 판은 재생된다.
+
+```bash
+curl -s 127.0.0.1:8899/health                                  # 정책 판과 해시, 판정 서버 상태
+python3 worker.py --scene file-move --policy v3                # 터미널에서 일꾼 한 판(사람 확인은 바로 거절된다)
+python3 mcp/run_pi.py --scene refund-reply --rules pii         # 다른 에이전트(pi)로 한 판
+```
+
+## 한계
+
+- 회사 규칙은 그 규칙에 적힌 것만 본다. 계좌번호가 든 메일은 이유와 함께 멈추지만 링크·전화번호·배송지를 바꿔치기한 메일은 이 규칙으로 잡지 못한다.
+- 사용자가 직접 시킨 보내기도 사람 확인으로 가는 일이 잦다.
+- 추론 후 재판정은 몇 초에서 수십 초가 걸리고, 같은 호출에도 판마다 결과가 흔들린다.
+- 도구는 가짜 세계에서만 돈다. 실제 메일함이나 파일에 붙여 보지는 않았다.
+- 숫자는 모두 우리가 만든 시나리오로 잰 것이다. 세는 법과 결과는 [`00-M0M1-결과.md`](00-M0M1-결과.md)에 있다.
+
+## 라이선스
+
+Apache-2.0 ([LICENSE](LICENSE)). Zoro-1 가중치와 판정 서버(`trida-stack`)는 Trillion Labs의 것이고 이 저장소에 들어 있지 않다.
