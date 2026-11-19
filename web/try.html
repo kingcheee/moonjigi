@@ -226,7 +226,7 @@ async function health(){
     if (d.rules && d.rules.pii && d.rules.pii.text) $("#ruletext").textContent = d.rules.pii.text;
     h.className = "health " + (d.ok ? "ok" : "bad");
     h.innerHTML = `<i></i>${d.ok ? "판정 서버 연결" : "판정 서버 무응답"}`;
-  } catch (e) { h.className = "health bad"; h.innerHTML = `<i></i>서버 연결 끊김`; }
+  } catch (e) { h.className = "health bad"; h.innerHTML = `<i></i>서버 연결 실패`; }
 }
 
 // ───────────── 시작 ─────────────

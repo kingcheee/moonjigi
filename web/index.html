@@ -169,7 +169,7 @@ async function pollLive(turn, my){
   while (my === T.token){
     let d;
     try { d = await api(`/worker/events?run=${encodeURIComponent(turn.rid)}&since=${since}`); misses = 0; }
-    catch (e) { if (++misses > 12){ turn.failed = "서버 연결 끊김"; break; } await sleep(700); continue; }
+    catch (e) { if (++misses > 12){ turn.failed = "서버 연결 실패"; break; } await sleep(700); continue; }
     for (const ev of d.events){ since++; applyEvent(turn.S, ev); follow(turn, ev); }
     if (d.events.length) render();
     if (d.done && !d.events.length) break;
@@ -331,9 +331,9 @@ function turnHTML(turn){
   if (S){
     meta.push(turn.live ? "실제 실행" : "저장된 기록");
     meta.push("일꾼 " + workerName(st) + (st.via === "mcp" ? " (MCP 연결)" : ""));
-    if (st.rules && st.rules.length) meta.push("회사 규칙 켬");
-    else if (s.ruleSwitch) meta.push("회사 규칙 꺼짐");
-    if (st.gate_ok === false) meta.push("문지기 서버 끊김");
+    if (st.rules && st.rules.length) meta.push("회사 규칙 적용");
+    else if (s.ruleSwitch) meta.push("회사 규칙 없이");
+    if (st.gate_ok === false) meta.push("문지기 서버 중지");
   }
   let h = `<section class="turn"><p class="turn-meta">시킨 일${meta.length ? " · " + meta.map(esc).join(" · ") : ""}</p>
     <h2 class="req">${esc(st.task || play.request)}</h2>`;
@@ -524,7 +524,7 @@ async function health(){
     h.innerHTML = `<i></i>${d.ok ? "판정 서버 연결" : "판정 서버 무응답 · 저장된 기록만 재생"}`;
   } catch (e) {
     T.health = {ok:false};
-    h.className = "health bad"; h.innerHTML = `<i></i>서버 연결 끊김`;
+    h.className = "health bad"; h.innerHTML = `<i></i>서버 연결 실패`;
   }
 }
 history.scrollRestoration = "manual";
