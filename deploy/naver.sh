@@ -16,7 +16,7 @@
 # 환경변수:
 #   IP     서버 공인 IP (기본: ~/.local/state/ncp-inference/ip — server-work 의 up.sh 가 적는다)
 #   CORE   gate.py·server.py·worker.py·scenes.json·web/·runs-live/ 를 가져올 폴더 (기본: 이 워크트리)
-#          a2 의 최신 작업 트리로 올리려면  CORE=../moonjigi deploy/naver.sh
+#          main 작업 트리의 최신 코드로 올리려면  CORE=../moonjigi deploy/naver.sh
 #   EXTRA  CORE 에 없는 web/·runs-live/ 파일을 더 얹을 폴더 (기본: 이 워크트리 — index.html·try.html·pi-*.jsonl). 겹치면 CORE 가 이긴다
 #   PORT   공개 포트 (기본 8899)
 #   POLICY 게이트 서버 기본 정책 판 (기본 v3)
