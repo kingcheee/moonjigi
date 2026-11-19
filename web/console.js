@@ -14,7 +14,7 @@
 "use strict";
 
 const LOG_N = 50;                                   // 검문 기록을 몇 줄 읽나
-const EVERY = {log:2000, runs:3000, health:15000};  // 다시 읽는 간격(ms). /health는 판정 서버까지 다녀오므로 드물게
+const EVERY = {log:2000, runs:4000, health:15000};  // 다시 읽는 간격(ms). /worker/runs는 서버가 판 파일을 100개까지 읽고, /health는 판정 서버까지 다녀오므로 드물게
 const THINK_S = 60;                                 // 「더 따져 보는 중」으로 보는 시간. 지나도 최종 판정이 없으면 「미결」
 const OPEN_S = 600;                                 // 안 끝난 MCP 판을 「연결 중」으로 보는 시간(마지막 기록부터)
 const PAST_RUNS = 24;                               // 처리 기록 · 최근 연결을 찾으려고 여는 끝난 판 수(한 번 읽으면 다시 읽지 않는다)
