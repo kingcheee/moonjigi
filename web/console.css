@@ -136,6 +136,15 @@ td.cn-c-target,td.cn-c-why{color:var(--ink-2)}
 .cn-conns .cn-meta{grid-column:1/-1;font-size:var(--fs-xs);color:var(--muted);font-variant-numeric:tabular-nums}
 .cn-conns .cn-meta b{font-weight:var(--fw-semi,600)}
 
+/* ── 1280～1439px(노트북): 세 칸을 유지하되 옆 칸과 표의 고정 칸을 줄여 「대상」 자리를 남긴다 ─── */
+@media (min-width:1280px) and (max-width:1439px){
+  .cn-shell{grid-template-columns:184px minmax(0,1fr) 312px}
+  .cn-c-time{width:96px}
+  .cn-c-tool{width:120px}
+  .cn-c-dec{width:100px}
+  .cn-c-ms{width:88px}
+}
+
 /* ── 1280px 아래: 메뉴가 탭, 칸은 하나씩 ─────────────────── */
 @media (max-width:1279px){
   .cn-shell{display:flex;flex-direction:column}
@@ -172,7 +181,7 @@ td.cn-c-target,td.cn-c-why{color:var(--ink-2)}
 
   .cn-table,.cn-table tbody{display:block}
   .cn-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}     /* 눈에만 안 보이게 — 읽어 주는 도구에는 남는다 */
-  .cn-table tr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:0 var(--s2);padding:var(--s2) var(--s4);border-bottom:var(--rule) solid var(--line)}
+  .cn-table tr{display:grid;grid-template-columns:108px minmax(0,1fr) auto;gap:0 var(--s2);padding:var(--s2) var(--s4);border-bottom:var(--rule) solid var(--line)}   /* 첫 칸 너비를 고정해야 행마다 대상·사유가 같은 자리에서 시작한다 */
   .cn-table td,.cn-table td:first-child,.cn-table td:last-child{width:auto;height:auto;padding:0;border:0}
   td.cn-c-tool{grid-area:1/1}
   td.cn-c-target{grid-area:1/2}

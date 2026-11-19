@@ -125,7 +125,6 @@ function renderStatus(state){
   text("st-policy", h.policy || "");
   short("st-policy-v", h.policy_version);
   short("st-rules-v", h.rules_version);
-  text("st-pending", h.pending ?? "");
 }
 function renderRules(){
   const rules = Object.entries(obj((C.health || {}).rules)), ver = (C.health || {}).rules_version;
