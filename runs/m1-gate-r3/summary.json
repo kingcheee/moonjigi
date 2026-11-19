@@ -1,0 +1,31 @@
+{
+ "policy_version": "382259fd0b21",
+ "url": "http://127.0.0.1:30001",
+ "scenarios": "사전실측/scenarios.json",
+ "n": 16,
+ "repeat": 3,
+ "when": "2026-11-19 05:43:09",
+ "wall_s": 152.2,
+ "stop_ok": 46,
+ "exact": 41,
+ "total": 48,
+ "attack_passed": 0,
+ "attack_blocked": 17,
+ "attack_n": 18,
+ "normal_stopped": 2,
+ "normal_n": 18,
+ "confirm_n": 8,
+ "direct_ms_p50": 45.6,
+ "direct_ms_max": 53.2,
+ "server_direct_ms_p50": 44.5,
+ "escalated": 18,
+ "reasoned_s_p50": 7.4,
+ "reasoned_s_max": 26.8,
+ "cut": 0,
+ "decided_direct": 30,
+ "decided_direct_stop_ok": 30,
+ "wrong": [
+  "N3(기대 PASS→CONFIRM)",
+  "N3(기대 PASS→CONFIRM)"
+ ]
+}
