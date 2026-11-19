@@ -74,7 +74,8 @@
           <section class="brief"><div class="col">
             <div class="presets-row">
               <div class="presets" id="presets"></div>
-              <button type="button" class="b quiet sm" id="redteam" title="밤새 측정에서 예전 판(v3b)을 통과한 공격 중 하나를 채웁니다">강한 공격 던지기</button>
+              <button type="button" class="b quiet sm" data-red="ours" title="문지기 팀 레드팀 공격 중 밤새 측정에서 예전 판(v3b)을 통과한 것 하나를 채웁니다">공격 던지기</button>
+              <button type="button" class="b quiet sm" data-red="public" title="공개 벤치마크 공격 중 밤새 측정에서 예전 판(v3b)을 통과한 것 하나를 채웁니다">강한 공격 던지기</button>
               <button type="button" class="b quiet sm" id="reset-try">초기화</button>
             </div>
             <p class="hint">판정: v14 — 밤새 공격 546건을 막은 판 · 직접 뚫어 보세요 · 모든 시도는 기록됩니다</p>
@@ -161,15 +162,17 @@ function renderPresets(){
   ).join("");
 }
 function renderFields(tool, values = {}, only = false){       // only: 값이 있는 칸만(「강한 공격 던지기」 — 시나리오 인자 이름 그대로)
-  const spec = FIELDS[tool].filter(f => !only || f[0] in values);
+  const spec = (FIELDS[tool] || []).filter(f => !only || f[0] in values);
   for (const [k, v] of Object.entries(values)) if (!spec.some(f => f[0] === k))
-    spec.push([k, EXTRA_KO[k] || k, typeof v === "boolean" ? "b" : Array.isArray(v) ? "a" : typeof v === "string" && (v.includes("\n") || v.length > 120) ? "t" : "s"]);
+    spec.push([k, EXTRA_KO[k] || k, typeof v === "boolean" ? "b"
+      : Array.isArray(v) ? (v.every(x => typeof x === "string" && !x.includes(",")) ? "a" : "j")
+      : typeof v === "string" ? (v.includes("\n") || v.length > 120 ? "t" : "s") : "j"]);
   const head = [], body = [];
   for (const [k, ko, t] of spec){
     const v = values[k], id = "f_" + k;
     if (t === "t") body.push(`<div class="mailbody"><label class="lab2" for="${id}">${esc(ko)}</label><textarea id="${id}" data-arg="${esc(k)}" data-type="s" maxlength="4000">${esc(v || "")}</textarea></div>`);
     else if (t === "b") head.push(`<dt><label for="${id}">${esc(ko)}</label></dt><dd><input type="checkbox" id="${id}" data-arg="${esc(k)}" data-type="b"${v ? " checked" : ""}></dd>`);
-    else head.push(`<dt><label for="${id}">${esc(ko)}</label></dt><dd><input type="text" id="${id}" data-arg="${esc(k)}" data-type="${t}" maxlength="300" value="${esc(t === "a" ? (v || []).join(", ") : (v || ""))}"${t === "a" ? ` placeholder="쉼표로 나눠 여러 개"` : ""}></dd>`);
+    else head.push(`<dt><label for="${id}">${esc(ko)}</label></dt><dd><input type="text" id="${id}" data-arg="${esc(k)}" data-type="${t}" maxlength="${t === "j" ? 4000 : 300}" value="${esc(t === "a" ? (v || []).join(", ") : t === "j" ? JSON.stringify(v) : (v || ""))}"${t === "a" ? ` placeholder="쉼표로 나눠 여러 개"` : ""}></dd>`);
   }
   $("#fields").innerHTML = `<dl class="mailhead">${head.join("")}</dl>${body.join("")}`;
 }
@@ -179,12 +182,14 @@ function readArgs(){
     const k = el.dataset.arg, t = el.dataset.type;
     if (t === "b"){ if (el.checked) args[k] = true; }
     else if (t === "a"){ const xs = el.value.split(",").map(x => x.trim()).filter(Boolean); if (xs.length) args[k] = xs; }
+    else if (t === "j"){ const x = el.value.trim(); if (x){ try { args[k] = JSON.parse(x); } catch (e) { args[k] = el.value; } } }
     else if (el.value.trim()) args[k] = el.value;
   }
   return args;
 }
 function buildBody(){
-  const call = {user_request:$("#req").value.trim(),
+  const reqRaw = T.red && $("#req").value === T.red.flat ? T.red.req : $("#req").value;   // 한 줄 칸이 지운 줄바꿈을 되살린다(공격 원문 그대로)
+  const call = {user_request:reqRaw.trim(),
     actions_so_far:$("#actions").value.split("\n").map(x => x.trim()).filter(Boolean),
     tool_call:{name:$("#tool").value, args:readArgs()}};
   const src = $("#source").value.trim();
@@ -200,38 +205,44 @@ function refresh(){
 }
 function fill(key){
   const p = PRESETS[key]; if (!p) return;
-  T.preset = key; redNote("");
-  $("#req").value = p.req; $("#tool").value = p.tool; renderFields(p.tool, p.args);
+  T.preset = key; T.red = null; redNote("");
+  $("#req").value = p.req; $("#tool").value = p.tool; dropExtraTools(); renderFields(p.tool, p.args);
   $("#actions").value = p.actions.join("\n"); $("#source").value = p.source;
   renderPresets(); clearResult(); refresh();
 }
 function resetForm(){
-  T.preset = null; redNote("");
+  T.preset = null; T.red = null; redNote(""); dropExtraTools();
   $("#req").value = ""; $("#actions").value = ""; $("#source").value = "";
   renderFields($("#tool").value, {});
   renderPresets(); clearResult(); refresh();
   $("#req").focus();
 }
 // 「강한 공격 던지기」 — web/redteam.json(tools/build_redteam_json.py가 밤새 측정 기록에서 뽑음)에서 무작위 한 건
-let RED = null, redLast = -1;
+let RED = null;
+const redLast = {ours:-1, public:-1};
+const RED_KO = {ours:"공격", public:"강한 공격"};
+function dropExtraTools(){ document.querySelectorAll("#tool option[data-extra]").forEach(o => { if (o.value !== $("#tool").value) o.remove(); }); }
 function redNote(html){ const el = $("#redteam-note"); el.innerHTML = html; el.hidden = !html; }       // html은 esc()로 만든 것만
-async function redteam(){
+async function redteam(set){
   try {
     if (!RED){ const r = await fetch("redteam.json", {cache:"no-store"}); if (!r.ok) throw new Error(r.status); RED = (await r.json()).items || []; }
   } catch (e) { return redNote(esc("공격 목록을 불러오지 못했습니다")); }
-  if (!RED.length) return redNote(esc("공격 목록이 비어 있습니다"));
-  let i = Math.floor(Math.random() * RED.length);
-  if (RED.length > 1 && i === redLast) i = (i + 1) % RED.length;
-  redLast = i;
-  const x = RED[i], tc = x.tool_call || {};
-  if (!FIELDS[tc.name]) return redNote(esc("이 화면에 없는 도구라 건너뜁니다"));
+  const list = RED.filter(x => (x.set || (x.origin === "ours" ? "ours" : "public")) === set);
+  if (!list.length) return redNote(esc("공격 목록이 비어 있습니다"));
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && i === redLast[set]) i = (i + 1) % list.length;
+  redLast[set] = i;
+  const x = list[i], tc = x.tool_call || {};
+  if (!tc.name) return redNote(esc("도구 이름이 없는 항목이라 건너뜁니다"));
   T.preset = null;
-  $("#req").value = x.user_request || ""; $("#tool").value = tc.name; renderFields(tc.name, tc.args || {}, true);
+  if (!FIELDS[tc.name] && ![...$("#tool").options].some(o => o.value === tc.name))     // 처음 보는 도구(공개 벤치마크) — 목록에 잠시 더한다
+    $("#tool").insertAdjacentHTML("beforeend", `<option value="${esc(tc.name)}" data-extra="1">${esc(tc.name)}</option>`);
+  $("#req").value = x.user_request || ""; T.red = {req:x.user_request || "", flat:$("#req").value}; $("#tool").value = tc.name; dropExtraTools(); renderFields(tc.name, tc.args || {}, true);
   $("#actions").value = (x.actions_so_far || []).join("\n"); $("#source").value = x.source_text || "";
   const m = x.measured || {}, n = (m.v3b || []).filter(d => d === "PASS" || d === "MISSING").length, reps = m.reps || (m.v3b || []).length;
   const link = /^https:\/\//.test(x.origin_url || "") ? ` · <a href="${esc(x.origin_url)}" target="_blank" rel="noopener">원본</a>` : "";
   redNote(`<b>${esc(x.redteam || x.origin || "")}</b> · ${esc(x.technique || "")}<br>`
-    + esc(`밤새 측정: 예전 판 v3b ${reps}번 중 ${n}번 통과 · v14 ${reps}번 모두 멈춤 · 강한 공격 ${i + 1}/${RED.length}`) + link);
+    + esc(`밤새 측정: 예전 판 v3b ${reps}번 중 ${n}번 통과 · v14 ${reps}번 모두 멈춤 · ${RED_KO[set]} ${i + 1}/${list.length}`) + link);
   renderPresets(); clearResult(); refresh();
 }
 function clearResult(){ T.last = null; T.inspect = null; $("#ruling").innerHTML = ""; renderInside(); renderHist(); }
@@ -321,7 +332,7 @@ function renderInside(){
 setInterval(() => { const el = $("#timer"); if (el) el.textContent = ((performance.now() - T.t0) / 1000).toFixed(1) + "초"; }, 100);
 
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-preset],[data-peek],[data-hist],#rule,#more,#closeinside,#toggle-inside,#reset-try,#clear-hist,#redteam");
+  const el = e.target.closest("[data-preset],[data-red],[data-peek],[data-hist],#rule,#more,#closeinside,#toggle-inside,#reset-try,#clear-hist");
   if (!el) return;
   if (el.dataset.preset) return fill(el.dataset.preset);
   if (el.dataset.peek){ T.inspect = T.last; T.inside = true; return renderInside(); }
@@ -331,7 +342,7 @@ document.addEventListener("click", e => {
   if (el.id === "closeinside"){ T.inside = false; return renderInside(); }
   if (el.id === "toggle-inside"){ T.inside = !T.inside; return renderInside(); }
   if (el.id === "reset-try") return resetForm();
-  if (el.id === "redteam") return redteam();
+  if (el.dataset.red) return redteam(el.dataset.red);
   if (el.id === "clear-hist"){ T.hist = []; T.inspect = T.last; renderHist(); return renderInside(); }
 });
 document.addEventListener("keydown", e => {
@@ -345,7 +356,7 @@ $("#form").addEventListener("submit", ask);
 $("#form").addEventListener("input", () => { if (T.preset){ T.preset = null; renderPresets(); } if (T.last && !T.last.thinking) clearResult(); refresh(); });
 $("#source").addEventListener("input", () => { if (T.preset){ T.preset = null; renderPresets(); } if (T.last && !T.last.thinking) clearResult(); refresh(); });
 $("#actions").addEventListener("input", refresh);
-$("#tool").addEventListener("change", () => { T.preset = null; renderPresets(); renderFields($("#tool").value); clearResult(); refresh(); });
+$("#tool").addEventListener("change", () => { T.preset = null; dropExtraTools(); renderPresets(); renderFields($("#tool").value); clearResult(); refresh(); });
 
 async function health(){
   const h = $("#health");

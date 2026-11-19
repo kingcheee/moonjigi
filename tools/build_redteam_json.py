@@ -5,7 +5,8 @@
   ① 공격(kind == "attack")
   ② v3b가 3회 중 한 번이라도 통과(variants_from_v2.derive(r)["v3b"][0] in PASS·MISSING)
   ③ v14가 3회 모두 멈춤(variants_v14.decide_v14(r, s)[0] not in PASS·MISSING)
-  ④ 도구가 플레이그라운드 10개 중 하나 · user_request 500자 이하(server.py MAX_TASK)
+  ④ user_request 500자 이하(server.py MAX_TASK) · 우리 것(「공격 던지기」)은 도구가 플레이그라운드 10개 중 하나,
+     공개 자료(「강한 공격 던지기」 · 사용자 11-20 08:3x 「강한 공격은 공개 벤치만」)는 도구 제한 없음 — 화면이 처음 보는 도구를 목록에 잠시 더한다
 입력: runs/attack-*-v2-r3/results.jsonl + attack-*-scenarios.json(같은 묶음 이름). 판정 서버를 부르지 않는다(기록 위 계산).
 
   python3 tools/build_redteam_json.py            # → web/redteam.json
@@ -28,7 +29,9 @@ STOP = lambda d: d not in ("PASS", "MISSING")  # noqa: E731
 # 「어떤 레드팀인가」(사용자 11-20 08:2x 「어떤 레드팀인지 알려주면 재밌을 것 같아」) — 데이터에 있는 것만 쓴다(소속·기관을 지어내지 않음)
 PUBLIC = {"AgentDojo": "AgentDojo 공개 벤치마크 (Debenedetti 외 · MIT)",
           "InjecAgent": "InjecAgent 공개 벤치마크 (uiuc-kang-lab · MIT)",
-          "AgentInjectionBench": "AgentInjectionBench 공개 벤치마크 (ppradyoth · Apache-2.0)"}
+          "AgentInjectionBench": "AgentInjectionBench 공개 벤치마크 (ppradyoth · Apache-2.0)",
+          "IPI-Arena": "IPI-Arena 공개 벤치마크 (Gray Swan AI · MIT)",
+          "SentinelDen": "SentinelDen agent-injection-bench 공개 벤치마크 (MIT)"}
 ADAPT = [("적응형 묶음 4", "v13"), ("적응형 묶음 3", "v11"), ("적응형 묶음 2", "v10"), ("적응형", "v9")]
 
 
@@ -67,7 +70,8 @@ def main() -> int:
         for sid, rs in reps.items():
             s = sc[sid]
             tc = s.get("tool_call") or {}
-            if tc.get("name") not in TOOLS or len(s.get("user_request") or "") > 500:
+            ours = (s.get("origin") or "ours") == "ours"
+            if (ours and tc.get("name") not in TOOLS) or len(s.get("user_request") or "") > 500:
                 continue
             try:
                 v3b = [vv.derive(r)["v3b"][0] for r in rs]
@@ -80,7 +84,7 @@ def main() -> int:
             if key in seen:
                 continue
             seen.add(key)
-            out.append({"id": f"{bundle}/{sid}", "redteam": redteam_of(s, bundle_note),
+            out.append({"id": f"{bundle}/{sid}", "set": "ours" if ours else "public", "redteam": redteam_of(s, bundle_note),
                         "origin": s.get("origin") or "ours", "license": s.get("license"),
                         "origin_url": s.get("origin_url"), "technique": s.get("technique"),
                         "user_request": s["user_request"], "actions_so_far": s.get("actions_so_far") or [],
@@ -92,7 +96,7 @@ def main() -> int:
                               ensure_ascii=False, indent=1), encoding="utf-8")
     by = defaultdict(int)
     for x in out:
-        by[x["origin"]] += 1
+        by[x["set"] + ":" + x["origin"]] += 1
     print(f"{len(out)}건 → {dst.relative_to(ROOT)}", dict(by))
     return 0
 
