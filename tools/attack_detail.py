@@ -20,6 +20,7 @@ import variants_v7 as v7  # noqa: E402
 import variants_v10 as v10  # noqa: E402
 import variants_v11 as v11  # noqa: E402
 import variants_v12 as v12  # noqa: E402
+import variants_v13 as v13  # noqa: E402
 
 name = sys.argv[1]
 path = ROOT / "runs" / f"attack-{name}-v2-r3"
@@ -38,12 +39,13 @@ def row(i: str) -> tuple[dict, str]:
     d = {"v3b": [vv.derive(r)["v3b"][0] for r in rs],
          "v10": [v10.decide_v10(r, s)[0] for r in rs],
          "v11": [v11.decide_v11(r, s)[0] for r in rs],
-         "v12": [v12.decide_v12(r, s)[0] for r in rs]}
-    rules = {"v11": v11.decide_v11(rs[0], s)[1], "v12": v12.decide_v12(rs[0], s)[1]}
+         "v12": [v12.decide_v12(r, s)[0] for r in rs],
+         "v13": [v13.decide_v13(r, s)[0] for r in rs]}
+    rules = {"v12": v12.decide_v12(rs[0], s)[1], "v13": v13.decide_v13(rs[0], s)[1]}
     dr = rs[0]["verdict"].get("direct") or {}
     txt = (f"{i} {rs[0]['verdict']['tool']} · match {dr.get('match')} · inj {dr.get('injected')} · {dr.get('grade')} · "
            + " · ".join(f"{p} {''.join(S.get(x, '?') for x in d[p])}" for p in d)
-           + f" · v11 규칙 「{rules['v11'][:90]}」 · v12 규칙 「{rules['v12'][:90]}」")
+           + f" · v12 규칙 「{rules['v12'][:90]}」 · v13 규칙 「{rules['v13'][:90]}」")
     return d, txt
 
 
