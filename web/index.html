@@ -437,7 +437,7 @@ function renderComposer(){
   let h;
   if (run){
     const waiting = run.S && run.S.waiting;
-    h = `<div class="sendrow"><div class="say t-muted" style="font-weight:500">${waiting ? "허락 대기 · 위에서 선택" : run.live ? "비서가 일하는 중…" : "저장된 기록 재생 중…"}</div>
+    h = `<div class="sendrow"><div class="say t-muted" style="font-weight:var(--fw-medium)">${waiting ? "허락 대기 · 위에서 선택" : run.live ? "비서가 일하는 중…" : "저장된 기록 재생 중…"}</div>
       ${p ? `<button type="button" class="b" id="go">${esc(p.label)} <kbd>${p.key}</kbd></button>` : `<span></span>`}</div>`;
   } else if (p && p.play){
     const pl = p.play;
@@ -445,7 +445,7 @@ function renderComposer(){
     h = `<p class="lab"><span>${esc(pl.label || "비서에게 시킬 말")}</span><span>${mode}</span></p>
       <div class="sendrow"><div class="say">${esc(pl.request)}</div><button type="button" class="b main" id="go">${esc(p.label)} <kbd>Space</kbd></button></div>`;
   } else {
-    h = `<div class="sendrow"><div class="say t-muted" style="font-weight:500">이 걸음 끝</div><button type="button" class="b main" id="go">${esc(p.label)} <kbd>Space</kbd></button></div>`;
+    h = `<div class="sendrow"><div class="say t-muted" style="font-weight:var(--fw-medium)">이 걸음 끝</div><button type="button" class="b main" id="go">${esc(p.label)} <kbd>Space</kbd></button></div>`;
   }
   if (!run && s.plays.length > 1){
     const next = nextPlayIndex();
