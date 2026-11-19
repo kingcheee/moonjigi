@@ -43,7 +43,7 @@ PENDING: dict[str, tuple[float, dict, dict]] = {}   # reason_id → (만든 시�
 PENDING_TTL = 600
 LOCK = threading.Lock()
 CFG = {"upstream": "http://127.0.0.1:30001", "log": HERE / "logs" / "gate.jsonl", "web": HERE / "web"}
-# 공개 서버 보호(11-19 6c 부탁) — 판정 결과·정책 해시와 무관한 입구 검사뿐이다
+# 공개 서버 보호(11-19 서사·배포 쪽 부탁) — 판정 결과·정책 해시와 무관한 입구 검사뿐이다
 MAX_BODY = 64 * 1024          # 요청 본문 상한 → 413
 MAX_LIVE_RUNS = 2             # 동시에 도는 라이브 일꾼 판 → 429
 MAX_TASK = 500                # task·user_request 글자 상한 → 400
