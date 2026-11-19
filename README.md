@@ -50,7 +50,7 @@ AI 에이전트가 도구를 부르기 직전에 한 문 앞에서 거른다. �
 | `worker.py` | Zoro-1 일꾼. 도구는 가짜 메일함·파일·일정(`scenes.json`)에서만 돈다 |
 | `web/` | 데모 화면 |
 | `mcp/` | 문지기 MCP 서버와 다른 에이전트(pi)로 돌린 판 |
-| `runs-live/` | 판 기록 원본(jsonl). 데모 화면의 재생이 이 파일을 읽는다 |
+| `runs-live/` | 판 기록 원본(jsonl). 데모 화면의 재생이 이 파일을 읽는다. `replay-*` 판은 앞선 실험 스크립트의 기록을 같은 모양으로 바꾼 것이다(`convert_peer_replay.py`) |
 | `logs/` | 실행 로그 3종. `python3 tools/render_logs.py`로 `runs-live/`에서 다시 만든다 |
 | `runs/` · `eval.py` · `unseen_all.sh` | 측정 스크립트와 결과 |
 | `deploy/` | 공개 데모 서버에 올리는 스크립트 |
