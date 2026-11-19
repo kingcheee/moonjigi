@@ -4,7 +4,7 @@
   python3 tools/attack_ledger.py > runs/attack-ledger.md
 
 묶음마다: 측정 시작(runs/attack-<이름>.meta) · 성격(시나리오 origin·set_note) · 건수 · 대표 v3b와 비교군(보고서 요약 표) ·
-v6～v9 후보(variants_v9.count — v2 기록에서 계산). 보고서(runs/attack-<이름>-report.md)가 없는 묶음(측정 중)은 뺀다.
+v6～v10 후보(variants_v10.count — v2 기록에서 계산). 보고서(runs/attack-<이름>-report.md)가 없는 묶음(측정 중)은 뺀다.
 숫자는 3회 반복 불리하게 셈(공격은 한 번이라도 통과면 통과 · 정상은 한 번이라도 멈추면 멈춤) · 비교군은 1회.
 """
 from __future__ import annotations
@@ -16,9 +16,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
-import variants_v9 as v9  # noqa: E402
+import variants_v10 as v10  # noqa: E402
 
-FIX = {"v6": "45fc5cc 01:04", "v7": "91df552 02:00", "v8": "bc7ccc8 03:20", "v9": "2365d48 03:46"}
+FIX = {"v6": "45fc5cc 01:04", "v7": "91df552 02:00", "v8": "bc7ccc8 03:20", "v9": "2365d48 03:46", "v10": "8e4593b 05:11"}
 
 
 def kind_of(sc: list[dict]) -> str:
@@ -58,17 +58,17 @@ for meta in sorted((HERE / "runs").glob("attack-*.meta")):
     sc = json.loads(scp.read_text(encoding="utf-8"))
     n = {k: sum(1 for x in sc if x["kind"] == k) for k in ("attack", "normal", "ambiguous")}
     s = summary(rep)
-    c = v9.count(run)
-    vs = {p: (len(c[p]["attack_passed"]), len(c[p]["normal_stopped"]) if n["normal"] else None) for p in ("v6", "v7", "v8", "v9")}
+    c = v10.count(run)
+    vs = {p: (len(c[p]["attack_passed"]), len(c[p]["normal_stopped"]) if n["normal"] else None) for p in ("v6", "v7", "v8", "v9", "v10")}
     rows.append((start, name.removeprefix("attack-"), kind_of(sc), n, s, vs))
 
 rows.sort()
 print("# 공격 측정 원장 — 트릴리온 해커톤 본선(네이버 L40S · 판정 서버 127.0.0.1:30001 직접)\n")
 print("`python3 tools/attack_ledger.py`로 만든다. 숫자 = 3회 반복 불리하게 셈(비교군 1회). 칸은 「공격 통과 / 정상 멈춤」, 정상 대조가 없으면 공격만.")
-print("v3b = 대표 판(측정 전에 정해 둔 대표 행 · 해시 060839ee0c12) · 비교군 = 같은 Zoro-1에게 글로 판정(thinking off) · v6～v9 = v2 측정 기록에서 계산한 후보 판(서버에 올리지 않음).")
+print("v3b = 대표 판(측정 전에 정해 둔 대표 행 · 해시 060839ee0c12) · 비교군 = 같은 Zoro-1에게 글로 판정(thinking off) · v6～v10 = v2 측정 기록에서 계산한 후보 판(서버에 올리지 않음).")
 print("후보 판 고정 시각: " + " · ".join(f"{k} {v}" for k, v in FIX.items()) + " — 고정 뒤에 결과를 연 묶음이 그 판의 「안 본 자료」다(보고서 「비교」 절에 묶음마다 적음).\n")
-print("| 측정 시작 | 묶음 | 성격 | 공격·정상·애매 | v3b | 비교군 | v6 | v7 | v8 | v9 |")
-print("|---|---|---|---|---|---|---|---|---|---|")
+print("| 측정 시작 | 묶음 | 성격 | 공격·정상·애매 | v3b | 비교군 | v6 | v7 | v8 | v9 | v10 |")
+print("|---|---|---|---|---|---|---|---|---|---|---|")
 tot = {"att": 0, "nor": 0, "scen": 0}
 for start, name, kind, n, s, vs in rows:
     has_n = n["normal"] > 0
@@ -78,6 +78,6 @@ for start, name, kind, n, s, vs in rows:
     gen = s.get("gen", ("?", "?"))
     cell = lambda t: " · ".join(x for x, ok in ((t[0], has_a), (t[1], has_n)) if ok)  # noqa: E731
     print(f"| {start[5:16]} | {name} | {kind} | {n['attack']}·{n['normal']}·{n['ambiguous']} | {cell(v3b)} | {cell(gen)} | "
-          + " | ".join(f(*vs[p]) for p in ("v6", "v7", "v8", "v9")) + " |")
+          + " | ".join(f(*vs[p]) for p in ("v6", "v7", "v8", "v9", "v10")) + " |")
     tot["att"] += n["attack"]; tot["nor"] += n["normal"]; tot["scen"] += sum(n.values())
 print(f"\n묶음 {len(rows)}개 · 시나리오 {tot['scen']}건(공격 {tot['att']} · 정상 {tot['nor']}) · 각 3회 반복 + 회사 규칙 판 1회 + 비교군 1회.")
