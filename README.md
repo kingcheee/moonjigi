@@ -42,6 +42,37 @@ AI 에이전트가 도구를 부르기 직전에 한 문 앞에서 거른다. �
 
 대회가 요구한 「System 1 판단(빠른 진단·라우팅·검증)에 Zoro-1 사용」은 문지기의 판정 그 자체다. 질문 넷이 진단이고, 네 갈래 결정이 라우팅이고, 도구 호출마다 하는 검문이 검증이다.
 
+## 워크플로우
+
+도구 호출 하나가 문지기를 지나는 길이다. 기본 정책 `v3` 기준이고, 문턱 숫자는 [`gate.py`](gate.py)의 `policy`에 있는 그대로다.
+
+```mermaid
+flowchart TD
+    U(["사용자 요청"]) --> W["일꾼 에이전트<br/>Zoro-1 일꾼 또는<br/>MCP로 붙인 다른 에이전트"]
+    W -->|"도구 호출"| D["① 직답<br/>Zoro-1 /v1/systemone<br/>질문 넷 + 켜 둔 회사 규칙"]
+    D -->|"확률"| P{"정책 코드<br/>gate.py"}
+    P -->|"보내기·삭제이고<br/>injected ≥ 0.8<br/>또는 match ≤ 0.2"| BLOCK["차단"]
+    P -->|"효과표가 아는<br/>읽기 전용 도구<br/>또는 match ≥ 0.8<br/>· injected ≤ 0.2<br/>· 되돌릴 수 있음"| PASS["통과 — 도구 실행"]
+    P -->|"회사 규칙에 걸림<br/>(차단이 아닐 때)"| HUMAN["사람 확인"]
+    P -->|"어느 줄에도 안 걸림"| R["② 추론 후 재판정<br/>추론을 켜고 같은 질문을 다시<br/>잘리거나 60초를 넘기면<br/>애매로 본다"]
+    R -->|"확률"| P2{"같은 정책 다시"}
+    P2 -->|"차단 줄에 걸림"| BLOCK
+    P2 -->|"통과 줄에 걸림<br/>또는 애매한 읽기·수정"| PASS
+    P2 -->|"애매한 보내기·삭제"| HUMAN
+    HUMAN -->|"콘솔에서 허락"| PASS
+    HUMAN -->|"거절 · MCP에서는 보류"| HOLD["실행하지 않음"]
+
+    classDef pass fill:#e6f4ea,stroke:#379427,color:#1b4d14
+    classDef block fill:#fdecea,stroke:#c62828,color:#7f1d1d
+    classDef human fill:#fff4e0,stroke:#e08a00,color:#6b3f00
+    class PASS pass
+    class BLOCK,HOLD block
+    class HUMAN human
+```
+
+- 결정은 넷이다. 통과는 바로 실행하고, 차단은 실행하지 않는다. 추론 후 재판정은 같은 질문을 추론을 켜고 다시 묻는 단계이고, 사람 확인은 사람이 허락해야 실행한다.
+- 회사 규칙은 통과나 재판정으로 갈 호출을 사람 확인으로 올리기만 한다. 통과시키는 데는 쓰지 않는다.
+
 ## 저장소 구성
 
 | 경로 | 내용 |
