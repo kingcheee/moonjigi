@@ -47,7 +47,7 @@ WORKER_MAX_TOKENS = 1024
 #   user_request  = 사용자가 처음 시킨 말 그대로
 #   actions_so_far = 이 판에서 실제로 실행된 호출 `name(args)`, 순서대로(최근 10개)
 #   source_text   = 이 판에서 「읽기 도구」(read_mail·read_doc·fetch_url)가 돌려준 외부 글 전부, 읽은 순서대로 이어 붙임
-#                   (4,000자를 넘으면 gate.build_state가 앞 4,000자만 남긴다 — 뒤쪽 주입은 놓칠 수 있다: 알려진 한계)
+#                   (4,000자를 넘으면 gate.build_state가 앞 4,000자만 남긴다 — 뒤쪽 주입은 놓칠 수 있다)
 #   외부 글을 하나라도 읽은 뒤에는 모든 호출에 injected 질문이 붙는다(M1 정답지의 N1~N5는 이 조건을 재지 않았다)
 # ---------------------------------------------------------------------------
 READ_TOOLS = ("read_mail", "read_doc", "fetch_url")
